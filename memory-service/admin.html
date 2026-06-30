@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>小克记忆管理面板</title>
+<style>
+:root{--bg:#f8f7f4;--card:#fff;--border:#e0ddd6;--text:#2b2520;--muted:#888;--accent:#d9724a;--green:#5a9e6f;--red:#c44;--blue:#4a7fd9;--warn:#e8a838}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1815;--card:#252320;--border:#3a3630;--text:#e8e4dd;--muted:#999;--accent:#f09060}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:14px/1.6 system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);padding:24px}
+h1{font-size:20px;font-weight:600;margin-bottom:4px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.stat{padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:8px;min-width:80px;text-align:center}
+.stat .n{font-size:22px;font-weight:700}
+.stat .l{font-size:11px;color:var(--muted)}
+.controls{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+input,select,button{padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--card);color:var(--text)}
+input{min-width:200px}
+button{cursor:pointer;font-weight:500}
+button:hover{opacity:0.85}
+.btn-del{color:var(--red);border-color:var(--red)}
+.btn-save{background:var(--blue);color:#fff;border-color:var(--blue)}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:13px}
+th{background:#f0eeea;font-weight:600}@media(prefers-color-scheme:dark){th{background:#2a2723}}
+tr:hover{background:rgba(0,0,0,.02)}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-candidate{background:#ffe;color:var(--warn);border:1px solid var(--warn)}
+.badge-working{background:#eff;color:var(--blue);border:1px solid var(--blue)}
+.badge-permanent{background:#efe;color:var(--green);border:1px solid var(--green)}
+.badge-archived{background:#f5f5f5;color:var(--muted)}
+.badge-forgotten{background:#fee;color:var(--red);border:1px solid var(--red)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;justify-content:center;align-items:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto}
+.modal h3{margin-bottom:16px}
+.modal label{display:block;margin:8px 0 4px;font-weight:500;font-size:12px;color:var(--muted)}
+.modal textarea{width:100%;min-height:80px;padding:8px;border:1px solid var(--border);border-radius:6px;font:13px system-ui;background:var(--bg);color:var(--text)}
+.modal .btns{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;color:#fff;font-weight:500;z-index:200;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+.toast-ok{background:var(--green)}
+.toast-err{background:var(--red)}
+.content-preview{max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div><h1>🧠 小克记忆管理面板</h1>
+  <span style="color:var(--muted);font-size:12px">本地记忆库管理 / data/memory.db</span></div>
+  <button onclick="location.reload()" style="font-size:12px">刷新</button>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="controls">
+  <input type="text" id="searchInput" placeholder="搜索记忆..." oninput="loadMemories()">
+  <select id="filterStatus" onchange="loadMemories()">
+    <option value="all">全部状态</option>
+    <option value="permanent">permanent</option>
+    <option value="working">working</option>
+    <option value="candidate">candidate</option>
+    <option value="archived">archived</option>
+    <option value="forgotten">forgotten</option>
+  </select>
+  <button onclick="runMaintenance()" style="font-size:12px">🔧 维护</button>
+  <button onclick="toggleSummaries()" style="font-size:12px">📋 摘要</button>
+</div>
+
+<table>
+<thead><tr><th>记忆内容</th><th>类型</th><th>状态</th><th>权重</th><th>频率</th><th>最后出现</th><th>操作</th></tr></thead>
+<tbody id="memTable"><tr><td colspan="7" style="color:var(--muted)">加载中...</td></tr></tbody>
+</table>
+
+<!-- 编辑弹窗 -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3>编辑记忆</h3>
+    <input type="hidden" id="editId">
+    <label>内容</label><textarea id="editContent"></textarea>
+    <label>类型</label>
+    <select id="editType">
+      <option value="preference">preference</option><option value="boundary">boundary</option>
+      <option value="relationship">relationship</option><option value="event">event</option>
+      <option value="emotional_pattern">emotional_pattern</option>
+      <option value="identity_fact">identity_fact</option>
+      <option value="current_goal">current_goal</option>
+      <option value="recurring_pain">recurring_pain</option>
+      <option value="general">general</option>
+    </select>
+    <div style="display:flex;gap:12px">
+      <div style="flex:1"><label>状态</label>
+        <select id="editStatus">
+          <option value="candidate">candidate</option><option value="working">working</option>
+          <option value="permanent">permanent</option><option value="archived">archived</option>
+          <option value="forgotten">forgotten</option>
+        </select></div>
+      <div style="flex:1"><label>权重</label><input type="number" id="editWeight" step="0.1"></div>
+      <div style="flex:1"><label>优先级</label>
+        <select id="editPriority"><option>P0</option><option>P1</option><option>P2</option><option>P3</option></select></div>
+    </div>
+    <div style="display:flex;gap:12px">
+      <div style="flex:1"><label>关键词</label><input id="editKeywords" placeholder="空格分隔"></div>
+      <div style="flex:1"><label>importance</label><input type="number" id="editImportance" step="0.1" min="0" max="5"></div>
+    </div>
+    <div class="btns">
+      <button class="btn-del" onclick="forgetMemory()">遗忘</button>
+      <button onclick="closeModal()">取消</button>
+      <button class="btn-save" onclick="saveMemory()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API = '/api';
+async function api(url, opts={}) {
+  const res = await fetch(API + url, opts);
+  return res.json();
+}
+
+function toast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast toast-'+(ok?'ok':'err');
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// 加载统计
+async function loadStats() {
+  const data = await api('/stats');
+  const st = document.getElementById('stats');
+  st.innerHTML = `
+    <div class="stat"><div class="n">${data.total || 0}</div><div class="l">总记忆</div></div>
+    <div class="stat"><div class="n">${data.msgCount || 0}</div><div class="l">消息数</div></div>
+    <div class="stat"><div class="n">${data.avgWeight || 0}</div><div class="l">平均权重</div></div>
+    <div class="stat"><div class="n">${data.sumCount || 0}</div><div class="l">摘要数</div></div>
+  `;
+}
+
+// 加载记忆列表
+async function loadMemories() {
+  const q = document.getElementById('searchInput').value;
+  const status = document.getElementById('filterStatus').value;
+  const data = await api('/memories?q=' + encodeURIComponent(q) + '&status=' + status + '&limit=200');
+  renderTable(data);
+}
+
+function badge(s) { return `<span class="badge badge-${s}">${s}</span>`; }
+
+function renderTable(data) {
+  const tbody = document.getElementById('memTable');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">无结果</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(m => `
+    <tr>
+      <td><span class="content-preview" title="${esc(m.content)}">${esc(m.content)}</span></td>
+      <td style="font-size:11px;color:var(--muted)">${m.type || '-'}</td>
+      <td>${badge(m.status || 'candidate')}</td>
+      <td>${(m.weight||0).toFixed(1)}</td>
+      <td>${m.frequency || 1}</td>
+      <td style="font-size:11px;color:var(--muted)">${m.updated_at ? m.updated_at.slice(0,16) : '-'}</td>
+      <td><button style="font-size:11px;padding:3px 8px" onclick="editMemory('${m.id}')">编辑</button></td>
+    </tr>`).join('');
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// 编辑记忆
+async function editMemory(id) {
+  const m = await api('/memories/' + id);
+  document.getElementById('editId').value = id;
+  document.getElementById('editContent').value = m.content || '';
+  document.getElementById('editType').value = m.type || 'general';
+  document.getElementById('editStatus').value = m.status || 'candidate';
+  document.getElementById('editWeight').value = m.weight || 0;
+  document.getElementById('editPriority').value = m.priority || 'P3';
+  document.getElementById('editKeywords').value = m.keywords || '';
+  document.getElementById('editImportance').value = m.importance || 1;
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('editModal').classList.remove('open'); }
+
+async function saveMemory() {
+  const id = document.getElementById('editId').value;
+  await fetch(API + '/memories/' + id, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      content: document.getElementById('editContent').value,
+      type: document.getElementById('editType').value,
+      status: document.getElementById('editStatus').value,
+      weight: parseFloat(document.getElementById('editWeight').value) || 0,
+      priority: document.getElementById('editPriority').value,
+      keywords: document.getElementById('editKeywords').value,
+      importance: parseFloat(document.getElementById('editImportance').value) || 1,
+    })
+  });
+  closeModal(); toast('已保存');
+  loadMemories(); loadStats();
+}
+
+async function forgetMemory() {
+  if (!confirm('确定遗忘这条记忆？')) return;
+  const id = document.getElementById('editId').value;
+  await fetch(API + '/memories/' + id, { method: 'DELETE' });
+  closeModal(); toast('已遗忘'); loadMemories(); loadStats();
+}
+
+async function runMaintenance() {
+  await fetch(API + '/maintenance', { method: 'POST' });
+  toast('维护完成'); loadMemories(); loadStats();
+}
+
+async function toggleSummaries() {
+  const data = await api('/summaries');
+  if (!data.length) { toast('暂无摘要'); return; }
+  alert(data.map(s => `[${s.type}] ${s.title||''}\n${s.content.slice(0,200)}...\n---\n${s.created_at}`).join('\n\n'));
+}
+
+// 初始化
+loadStats(); loadMemories();
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadMemories();
+});
+
+// 点击弹窗外部关闭
+document.getElementById('editModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>

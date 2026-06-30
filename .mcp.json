@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "memory-service": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["memory-service/mcp-server.js"],
+      "timeout": 30000
+    }
+  }
+}
