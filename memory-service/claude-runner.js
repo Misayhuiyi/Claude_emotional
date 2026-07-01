@@ -37,7 +37,7 @@ function run(context, options = {}) {
     // 最后的 prompt：让 Claude 按要求回复
     const prompt = '请按照上述身份和规则，用自然、短句的方式回复用户。只输出回复内容，不要加前缀标记。';
 
-    const child = spawn('claude', [...args, prompt], {
+    const child = spawn('C:\\Users\\Administrator\\.local\\real-claude\\claude.exe', [...args, prompt], {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: timeout,
       env: { ...process.env },

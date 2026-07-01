@@ -7,11 +7,15 @@ thinking_messages = false
 
 tool_messages = false
 
+reply_footer = false
+
+show_context_indicator = false
+
 [log]
 level = "info"
 
 [[projects]]
-name = "小克"
+name = "沈幼楚"
 
 [projects.agent]
 type = "claudecode"
@@ -19,13 +23,14 @@ type = "claudecode"
 [projects.agent.options]
 work_dir = "e:\\better\\EmotionalAgent"
 mode = "default"
+append_system_prompt = "每次回复前请先调用 memory-search 工具检索相关记忆，确保回应是基于过去的对话。"
 
 [[projects.platforms]]
 type = "weixin"
 
 [projects.platforms.options]
-# token = "通过 cc-connect weixin setup --project 小克 自动获取"
+# token = "你的微信token"
 # allow_from = ""  # 建议填写以限制使用者
-token = "fb6783d6663d@im.bot:060000ea3ad35cc2a71231ba02dfd63ebe9842"
+token = "你的微信token"
 base_url = "https://ilinkai.weixin.qq.com"
-account_id = "fb6783d6663d@im.bot"
+account_id = "你的账号"

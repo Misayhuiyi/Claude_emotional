@@ -47,7 +47,7 @@ module.exports = {
   CLAUDE: {
     bareMode: true,                   // --bare 模式，跳过 hooks/插件
     timeout: 30000,                   // 单次调用超时（ms）
-    note: 'cc-connect 通过 Agent CLI 调用本项目的 Claude Code',
+    note: 'cc-connect 通过 Agent CLI 调用本项目的 Claude Code（沈幼楚人格）',
   },
 
   // DeepSeek 适配（非 Claude 原生模型时的加强约束）

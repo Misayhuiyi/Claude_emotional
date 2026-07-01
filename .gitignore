@@ -18,3 +18,9 @@ memory/relationships.md
 .DS_Store
 Thumbs.db
 .config.toml.lock
+
+# 微信密钥
+config.toml
+.cc-connect/
+*.png
+*.jpg

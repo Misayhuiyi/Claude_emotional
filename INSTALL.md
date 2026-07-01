@@ -1,292 +1,80 @@
-# 小克安装使用说明
+# 沈幼楚 完整安装使用指南
+
+---
 
 ## 目录
 
-1. [环境要求](#1-环境要求)
-2. [快速开始](#2-快速开始)
-3. [项目结构](#3-项目结构)
-4. [日常使用](#4-日常使用)
-5. [记忆管理](#5-记忆管理)
-6. [微信接入](#6-微信接入)
-7. [命令参考](#7-命令参考)
-8. [备份与恢复](#8-备份与恢复)
-9. [模型切换](#9-模型切换)
-10. [常见问题](#10-常见问题)
+- [环境要求](#环境要求)
+- [快速安装（5 分钟）](#快速安装5-分钟)
+- [微信接入（cc-connect）](#微信接入cc-connect)
+- [项目配置详解](#项目配置详解)
+- [日常使用](#日常使用)
+- [记忆系统](#记忆系统)
+- [后台服务（开机自启）](#后台服务开机自启)
+- [备份与恢复](#备份与恢复)
+- [模型切换](#模型切换)
+- [故障排除](#故障排除)
 
 ---
 
-## 1. 环境要求
+## 环境要求
 
-| 依赖 | 最低版本 | 安装方式 |
-|------|----------|----------|
-| Node.js | v18+ | [nodejs.org](https://nodejs.org) |
-| Claude Code CLI | 最新版 | `npm install -g @anthropic-ai/claude-code` |
-| Git Bash | 任意版本 | 随 Git for Windows 安装 |
-| cc-connect | v1.4+ | `npm install -g cc-connect`（微信接入需要） |
-
-### 验证环境
-
-```bash
-node --version    # ≥ v18
-claude --version  # Claude Code 已安装
-```
-
----
-
-## 2. 快速开始
-
-```bash
-# 1. 进入项目目录
-cd /e/better/EmotionalAgent
-
-# 2. 安装依赖
-npm install
-
-# 3. 初始化数据库
-node scripts/init-db.js
-
-# 4. 启动本地测试
-node memory-service/index.js
-```
-
-在终端直接和小克对话，输入 `/exit` 退出。
-
-### 首次对话示例
-
-```
-你：你好
-小克：你好呀，我是小克 😊
-
-你：我叫小明
-小克：小明你好！
-
-你：帮我记住，我不喜欢被说教
-小克：记住了 ✓
-```
-
----
-
-## 3. 项目结构
-
-```
-emotional-agent/
-├── CLAUDE.md                  # 小克行为规则（先读这个）
-├── identity_core.md           # 稳定人格定义
-├── runtime_brief.md           # 每轮必读摘要（自动生成）
-├── current_state.md           # 当前状态（自动更新）
-├── checkpoint.md              # 手动交接快照
-│
-├── data/
-│   ├── memory.db              # SQLite 长期记忆主库 ★
-│   ├── backups/               # 自动备份
-│   └── vectors.db             # 向量索引
-│
-├── memory-service/            # 核心引擎
-│   ├── index.js               # 主入口
-│   ├── db.js                  # 数据库读写
-│   ├── search.js              # 混合检索
-│   ├── gate.js                # 记忆权重
-│   ├── summarize.js           # 自动摘要
-│   ├── claude-runner.js       # Claude CLI 调用
-│   └── context-manager.js     # 上下文拼接
-│
-├── scripts/
-│   ├── init-db.js             # 初始化数据库
-│   ├── seed-memory.js         # 播种测试记忆
-│   ├── backup-memory.js       # 备份工具
-│   └── import-legacy-keke.js  # 旧小克迁移
-│
-├── .claude/
-│   ├── settings.local.json    # 项目模型配置
-│   ├── commands/              # 自定义命令 ★
-│   └── agents/                # 子 Agent 定义
-│
-└── config.toml                # cc-connect 配置
-```
-
----
-
-## 4. 日常使用
-
-### 4.1 终端测试模式
-
-```bash
-node memory-service/index.js
-```
-
-每次输入一行，小克回复一行。对话历史保留在内存中。
-
-### 4.2 关键特性
-
-| 特性 | 说明 |
-|------|------|
-| 情感承接 | 先接情绪再说事，不说教 |
-| 模式切换 | 检测到技术请求自动切换专业模式 |
-| 长期记忆 | 反复提到的事自动沉淀 |
-| 上下文压缩 | token 超过 6000 自动压缩历史 |
-| 热记忆 | 每次回复前自动读取身份/状态/规则 |
-
-### 4.3 记忆生命周期
-
-```
-用户提过一次  →  candidate（暂存）
-再次提到      →  working（活跃）
-反复提到/明确记 →  permanent（永久）
-长期未提      →  archived（归档）
-用户说忘掉    →  forgotten（遗忘）
-```
-
----
-
-## 5. 记忆管理
-
-### 5.1 Web 管理面板
-
-```bash
-node memory-service/admin-server.js
-# 打开 http://localhost:8765
-```
-
-面板功能：
-- 查看/搜索所有记忆
-- 编辑记忆内容和类型
-- 调整权重和状态
-- 标记遗忘
-- 查看统计和摘要
-
-### 5.2 对话中管理
-
-```
-用户：/remember 我最受不了别人居高临下对我说话
-小克：已记住 ✓
-
-用户：/forget 说教
-小克：找到 2 条相关记忆，确认遗忘？[1] 用户不喜欢被说教 [2] ... 
-
-用户：/checkpoint
-小克：已保存 checkpoint ✓
-```
-
----
-
-## 6. 微信接入
-
-### 6.1 安装 cc-connect
-
-```bash
-npm install -g cc-connect
-```
-
-### 6.2 配置与启动
-
-```bash
-cd /e/better/EmotionalAgent
-
-# 微信扫码绑定
-cc-connect weixin setup --project 小克
-# 终端会显示二维码，用手机微信扫码确认
-
-# 启动
-cc-connect
-```
-
-### 6.3 验证
-
-手机微信给小克发一条消息，观察终端日志是否收到回复。
-
-### 6.4 cc-connect 常用命令
-
-```bash
-cc-connect                          # 启动
-cc-connect daemon install           # 安装为系统服务（开机自启）
-cc-connect daemon start             # 启动服务
-cc-connect daemon stop              # 停止服务
-cc-connect --config config.toml     # 指定配置启动
-```
-
-### 6.5 微信内命令
-
-```
-/model deepseek-v4-flash       # 切换模型
-/model deepseek-v4-pro         # 切强模型（工程任务）
-/list                           # 查看会话
-/switch <会话名>                 # 切换会话
-/new                           # 新会话
-/cron list                      # 查看定时任务
-```
-
----
-
-## 7. 命令参考
-
-| 命令 | 功能 | 示例 |
+| 依赖 | 版本 | 安装 |
 |------|------|------|
-| `/remember` | 写入永久记忆 | `/remember 小明讨厌被说教` |
-| `/forget` | 遗忘记忆 | `/forget 说教` |
-| `/checkpoint` | 保存情绪快照 | `/checkpoint` |
-| `/summarize` | 生成摘要 | `/summarize` 或 `/summarize weekly` |
-| `/memory-audit` | 记忆健康检查 | `/memory-audit` |
-| `/import-legacy-keke` | 导入旧小克 | `/import-legacy-keke` |
+| Node.js | ≥ v18 | [nodejs.org](https://nodejs.org) |
+| Claude Code CLI | 最新 | `npm install -g @anthropic-ai/claude-code` |
+| cc-connect | ≥ v1.4 | `npm install -g cc-connect` |
+| Git | 任意 | [git-scm.com](https://git-scm.com) |
 
----
-
-## 8. 备份与恢复
-
-### 8.1 备份
+验证环境：
 
 ```bash
-# SQLite 备份（自动清理旧备份，保留 7 天）
-node scripts/backup-memory.js
-
-# JSON 导出（可迁移、可人工阅读）
-node scripts/backup-memory.js --json
-cat data/backups/export-*.json
-
-# 清理旧备份（保留最近 N 个）
-node scripts/backup-memory.js --cleanup 14
-```
-
-### 8.2 恢复
-
-```bash
-# 从 SQLite 备份恢复
-cp data/backups/memory-YYYY-MM-DD.db data/memory.db
-```
-
-### 8.3 定时备份（cc-connect cron）
-
-```bash
-# 在 cc-connect 中配置每日备份
-cc-connect cron add "0 3 * * *" "cd /e/better/EmotionalAgent && node scripts/backup-memory.js"
+node --version    # v18+
+claude --version
+cc-connect --version
 ```
 
 ---
 
-## 9. 模型切换
+## 快速安装（5 分钟）
 
-### 9.1 配置文件方式
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/Misayhuiyi/Claude_emotional.git
+cd Claude_emotional
+```
+
+### 2. 安装依赖
+
+```bash
+npm install
+```
+
+### 3. 初始化数据库
+
+```bash
+node scripts/init-db.js
+```
+
+### 4. 配置模型
 
 编辑 `.claude/settings.local.json`：
 
 ```json
 {
-  "model": "deepseek-v4-flash",
   "env": {
     "ANTHROPIC_MODEL": "deepseek-v4-flash",
-    "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic"
-  }
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro",
+    "ANTHROPIC_REASONING_MODEL": "deepseek-v4-flash"
+  },
+  "model": "deepseek-v4-flash"
 }
 ```
 
-### 9.2 可用模型
-
-| 模型名 | 用途 | 延迟 |
-|--------|------|------|
-| `deepseek-v4-flash` | 日常陪伴（默认） | ~1.7s |
-| `deepseek-v4` | 一般对话 | ~3s |
-| `deepseek-v4-pro` | 工程分析 | ~8s |
-
-### 9.3 切换到 Anthropic 官方
+如果是 Anthropic 官方密钥：
 
 ```json
 {
@@ -297,54 +85,385 @@ cc-connect cron add "0 3 * * *" "cd /e/better/EmotionalAgent && node scripts/bac
 }
 ```
 
+### 5. 播种初始记忆（可选）
+
+```bash
+node scripts/seed-memory.js
+```
+
+### 6. 终端测试
+
+```bash
+node memory-service/index.js
+```
+
+输入消息测试对话。输入 `/exit` 退出。
+
 ---
 
-## 10. 常见问题
+## 微信接入（cc-connect）
 
-### Q: Claude Code 提示 `model temporarily unavailable`
-
-DeepSeek API 暂时不稳定。等待几分钟后重试。或在 `.claude/settings.local.json` 中添加 `"disableAutoMode": "disable"` 跳过安全审核。
-
-### Q: cc-connect 扫码后没反应
-
-1. 确认 `config.toml` 中的 `work_dir` 路径正确
-2. 检查微信是否是最新版
-3. 试用 `cc-connect weixin new` 重新获取二维码
-
-### Q: 记忆库突然变空
-
-检查 `data/memory.db` 是否存在。如果丢失，从备份恢复：
+### 1. 安装 cc-connect
 
 ```bash
-cp data/backups/memory-*.db data/memory.db
+npm install -g cc-connect
 ```
 
-### Q: 如何迁移旧小克
+### 2. 配置 config.toml
 
-```bash
-# 1. 在旧窗口让 Claude 生成交接包
-# 2. 保存为 handoff.md
+编辑项目根目录的 `config.toml`：
 
-# 3. 导入
-node scripts/import-legacy-keke.js handoff.md
+```toml
+language = "zh"
 
-# 4. 检查
-cat identity_core.md
-# 打开 http://localhost:8765 审核记忆
+[log]
+level = "info"
+
+[[projects]]
+name = "沈幼楚"
+
+[projects.agent]
+type = "claudecode"
+
+[projects.agent.options]
+work_dir = "e:\\better\\EmotionalAgent"
+mode = "default"
+append_system_prompt = "每次回复前请先调用 memory-search 工具检索相关记忆。"
+
+[[projects.platforms]]
+type = "weixin"
+
+[projects.platforms.options]
+# token 通过下一步扫码自动获取
 ```
 
-### Q: 回复太长怎么办
-
-在 CLAUDE.md 中已配置陪伴模式 2-5 句限制。如果仍然过长，可以在对话中说"回短一点"。
-
-### Q: 怎么完全重置
+### 3. 微信扫码绑定
 
 ```bash
-# 备份
+cd 项目目录
+cc-connect weixin setup --project 沈幼楚
+```
+
+终端会显示二维码，用手机微信扫码确认。token 会自动写入 config.toml。
+
+如果已有 token：
+
+```bash
+cc-connect weixin bind --project 沈幼楚 --token '你的token'
+```
+
+### 4. 启动
+
+```bash
+# 前台启动（测试用）
+cc-connect
+
+# 后台服务（推荐）
+cc-connect daemon install
+```
+
+### 5. 验证
+
+用微信给机器人发消息，终端日志会显示消息处理过程。
+
+### 6. 微信内可用命令
+
+```
+/model deepseek-v4-flash    # 切换陪伴模型（快速）
+/model deepseek-v4-pro      # 切换工作模型（强推理）
+/list                        # 查看会话列表
+/switch <id>                 # 切换会话
+/new                         # 新会话
+/cron list                   # 查看定时任务
+```
+
+---
+
+## 项目配置详解
+
+### config.toml 完整说明
+
+```toml
+language = "zh"
+
+[display]
+mode = "quiet"                # 安静模式，减少中间消息
+thinking_messages = false     # 不显示思考过程
+tool_messages = false         # 不显示工具调用
+reply_footer = false          # 不显示模型状态尾巴
+show_context_indicator = false # 不显示上下文占比
+
+[log]
+level = "info"
+
+[[projects]]
+name = "沈幼楚"
+
+[projects.agent]
+type = "claudecode"
+
+[projects.agent.options]
+work_dir = "项目绝对路径"
+mode = "default"
+append_system_prompt = "每次回复前请先调用 memory-search 工具检索相关记忆"
+
+[[projects.platforms]]
+type = "weixin"
+
+[projects.platforms.options]
+token = "扫码获取的token"
+base_url = "https://ilinkai.weixin.qq.com"
+account_id = "机器人账号"
+```
+
+### .claude/settings.local.json 说明
+
+| 字段 | 用途 |
+|------|------|
+| `model` | 默认模型（flash 日常 / pro 工作） |
+| `ANTHROPIC_API_KEY` | Anthropic 官方密钥（可选，不填则用 DeepSeek） |
+| `ANTHROPIC_BASE_URL` | 非官方 API 地址（DeepSeek 代理） |
+| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | 快速模型 |
+| `ANTHROPIC_REASONING_MODEL` | auto-mode 安全审核模型 |
+
+---
+
+## 日常使用
+
+### 微信聊天
+
+配置好 cc-connect 后，直接通过微信给机器人发消息即可。
+
+- 日常聊天 → 自动触发记忆检索和存储
+- 说"记住XXX" → 写入永久记忆
+- 说"忘掉XXX" → 标记遗忘
+- 发 `/checkpoint` → 保存当前情绪位置
+
+### 终端测试
+
+```bash
+node memory-service/index.js
+```
+
+用于本地测试和调试，不依赖微信。
+
+### 记忆管理面板
+
+```bash
+node memory-service/admin-server.js
+# 浏览器打开 http://localhost:8765
+```
+
+功能：
+- 浏览所有记忆（按权重排序）
+- 搜索记忆
+- 编辑内容、类型、状态、权重
+- 标记遗忘
+- 查看统计（总记忆、消息数、摘要数）
+
+---
+
+## 记忆系统
+
+### 记忆生命周期
+
+```
+用户提到一次 → candidate（暂存，权重 < 5）
+再次提到     → working（活跃，5 ≤ 权重 < 12）
+反复提到/明确记住 → permanent（永久，权重 ≥ 12）
+长期未出现   → archived（归档）
+用户说忘掉   → forgotten（遗忘）
+```
+
+### 权重公式
+
+```
+weight = importance × 2 + frequency × 1.5 + emotion_score × 2
+       + explicit_score × 5 + recency_score + confidence
+```
+
+权重由代码保证计算，不依赖模型判断。
+
+### 在聊天中管理记忆
+
+```
+用户：记住我最讨厌吃香菜
+小克：好，我记住啦 ✓
+
+用户：忘掉吃香菜那件事
+小克：已忘掉 ✓
+
+用户：/checkpoint
+小克：已保存 checkpoint ✓
+```
+
+### 记忆查看
+
+- Web 面板：http://localhost:8765
+- 对话中查不到，但 Claude 回复时会自动检索相关记忆
+
+---
+
+## 后台服务（开机自启）
+
+项目包含 3 个 Windows 定时任务，安装后开机自动运行：
+
+| 任务 | 时间 | 功能 |
+|------|------|------|
+| `cc-connect` | 开机启动 | 微信消息桥接 |
+| `shen-yuchu-session-watcher` | 开机启动 | 每 10 秒同步消息到记忆库 |
+| `shen-yuchu-summary` | 每天 03:00 | 生成昨日对话摘要 |
+| `shen-yuchu-maintenance` | 每天 04:00 | 遗忘维护（归档过期记忆） |
+
+安装命令：
+
+```bash
+# cc-connect（已含在安装步骤）
+cc-connect daemon install
+
+# session-watcher
+schtasks //create //tn "shen-yuchu-session-watcher" //tr "node e:\better\EmotionalAgent\memory-service\session-watcher.js" //sc onstart //rl LIMITED //f
+
+# 每日摘要
+schtasks //create //tn "shen-yuchu-summary" //tr "cmd /c e:\better\EmotionalAgent\scripts\daily-summary.cmd" //sc daily //st 03:00 //rl LIMITED //f
+
+# 遗忘维护
+schtasks //create //tn "shen-yuchu-maintenance" //tr "node -e require('./memory-service/gate').runMaintenance()" //sc daily //st 04:00 //rl LIMITED //f
+```
+
+查看服务状态：
+
+```bash
+cc-connect daemon status
+```
+
+---
+
+## 备份与恢复
+
+### 手动备份
+
+```bash
+# SQLite 数据库备份（自动保留 7 天）
+node scripts/backup-memory.js
+
+# JSON 导出（可阅读、可迁移）
+node scripts/backup-memory.js --json
+
+# 设置保留数量
+node scripts/backup-memory.js --cleanup 14
+```
+
+备份文件保存在 `data/backups/` 目录。
+
+### 恢复
+
+```bash
+# 从备份恢复
+cp data/backups/memory-2026-07-01.db data/memory.db
+```
+
+---
+
+## 模型切换
+
+### 方案一：切换默认模型
+
+编辑 `.claude/settings.local.json`：
+
+```json
+{
+  "model": "deepseek-v4-pro"
+}
+```
+
+### 方案二：切换提供商（DeepSeek → Anthropic）
+
+```json
+{
+  "env": {
+    "ANTHROPIC_API_KEY": "sk-ant-你的密钥",
+    "ANTHROPIC_BASE_URL": "",
+    "ANTHROPIC_MODEL": "claude-sonnet-4-6"
+  }
+}
+```
+
+### 方案三：微信内临时切换（仅当前会话）
+
+```
+/model deepseek-v4-pro
+```
+
+### 可用模型
+
+| 模型 | 用途 | 速度 |
+|------|------|------|
+| `deepseek-v4-flash` | 日常陪伴（默认） | ~1.7s |
+| `deepseek-v4` | 标准对话 | ~3s |
+| `deepseek-v4-pro` | 工程/工作模式 | ~8s |
+| `claude-sonnet-4-6` | Anthropic 官方 | 视网络 |
+
+---
+
+## 故障排除
+
+### 微信消息已发送但未回复
+
+```bash
+# 检查 cc-connect 是否运行
+cc-connect daemon status
+
+# 检查日志
+cc-connect daemon logs -n 50
+
+# 重启
+cc-connect daemon restart
+```
+
+### claude 命令找不到
+
+```bash
+# 检查 claude 是否在 PATH 中
+where claude
+
+# 如缺失则重新安装
+npm install -g @anthropic-ai/claude-code
+```
+
+### 记忆面板无法访问
+
+```bash
+# 手动启动
+node memory-service/admin-server.js
+# 浏览器打开 http://localhost:8765
+```
+
+### 模型返回 "model temporarily unavailable"
+
+DeepSeek API 暂时不稳定，等待几分钟后重试，或在 `.claude/settings.local.json` 中加入：
+
+```json
+"disableAutoMode": "disable"
+```
+
+### 数据库损坏
+
+```bash
+# 从备份恢复
+cp data/backups/memory-最近日期.db data/memory.db
+
+# 或重新初始化（会清空所有记忆）
+node scripts/init-db.js
+```
+
+### 如何完全重置
+
+```bash
+# 备份旧数据
 node scripts/backup-memory.js
 
 # 重建
-rm data/memory.db
+del data\memory.db
 node scripts/init-db.js
-node scripts/seed-memory.js  # 播种最基础的测试记忆
 ```
