@@ -24,3 +24,4 @@ config.toml
 .cc-connect/
 *.png
 *.jpg
+console.log*

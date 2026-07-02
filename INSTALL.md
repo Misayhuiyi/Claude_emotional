@@ -128,7 +128,7 @@ type = "claudecode"
 [projects.agent.options]
 work_dir = "e:\\better\\EmotionalAgent"
 mode = "default"
-append_system_prompt = "每次回复前请先调用 memory-search 工具检索相关记忆。"
+append_system_prompt = "每次回复前请先调用 memory_search 工具检索相关记忆。"
 
 [[projects.platforms]]
 type = "weixin"
@@ -205,7 +205,7 @@ type = "claudecode"
 [projects.agent.options]
 work_dir = "项目绝对路径"
 mode = "default"
-append_system_prompt = "每次回复前请先调用 memory-search 工具检索相关记忆"
+append_system_prompt = "每次回复前请先调用 memory_search 工具检索相关记忆"
 
 [[projects.platforms]]
 type = "weixin"
@@ -268,9 +268,9 @@ node memory-service/admin-server.js
 ### 记忆生命周期
 
 ```
-用户提到一次 → candidate（暂存，权重 < 5）
-再次提到     → working（活跃，5 ≤ 权重 < 12）
-反复提到/明确记住 → permanent（永久，权重 ≥ 12）
+用户提到一次 → candidate（暂存，权重 < 10）
+再次提到     → working（活跃，10 ≤ 权重 < 20）
+反复3次+/明确记住 → permanent（永久，权重 ≥ 20）
 长期未出现   → archived（归档）
 用户说忘掉   → forgotten（遗忘）
 ```

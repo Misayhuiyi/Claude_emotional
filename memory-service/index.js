@@ -68,18 +68,18 @@ async function processMessage(userMessage, contextMessages = null) {
     conversationId: sessionId,
   });
 
-  // 🔍 FTS5 关键词检索长期记忆
-  const memories = search.hybridSearch(userMessage, { limit: config.CONTEXT.maxMemoryInject });
-
-  // 用压缩后的历史拼接上下文
-  const effectiveHistory = (compressedHistory !== history) ? compressedHistory : history;
-  const { context, estimatedTokens } = contextManager.buildContext(
-    userMessage, effectiveHistory, memories,
-  );
-
   // 检查是否需要压缩
   let compressedHistory = history;
   let compressionSummary = '';
+
+  // 🔍 FTS5 关键词检索长期记忆
+  const memories = await search.hybridSearch(userMessage, { limit: config.CONTEXT.maxMemoryInject });
+
+  // 先用当前历史拼接上下文并估算 token，必要时再压缩后重建
+  let { context, estimatedTokens } = contextManager.buildContext(
+    userMessage, compressedHistory, memories,
+  );
+
   if (contextManager.shouldCompress(estimatedTokens, history.length)) {
     console.log('  ⚡ 触发上下文压缩...');
 
@@ -105,6 +105,10 @@ async function processMessage(userMessage, contextMessages = null) {
           console.log('  📝 current_state.md 已更新');
         } catch (e) { /* 非关键 */ }
       });
+
+      ({ context, estimatedTokens } = contextManager.buildContext(
+        userMessage, compressedHistory, memories,
+      ));
     }
   }
 

@@ -93,9 +93,9 @@ weight = importance × 2 + frequency × 1.5 + emotion_score × 2
 
 | 阈值 | 状态 |
 |------|------|
-| < 5 | candidate（暂存） |
-| 5 ~ 12 | working（活跃） |
-| ≥ 12 | permanent（永久） |
+| < 10 | candidate（暂存） |
+| 10 ~ 20 | working（活跃） |
+| ≥ 20 | permanent（永久） |
 
 ---
 

@@ -64,9 +64,9 @@ module.exports = {
 
   // 记忆状态阈值
   MEMORY: {
-    candidateWeightMax: 5,
-    workingWeightMax: 12,
-    permanentWeightMin: 12,
+    candidateWeightMax: 10,
+    workingWeightMax: 20,
+    permanentWeightMin: 20,
     candidateExpireDays: 14,
     workingExpireDays: 30,
   },

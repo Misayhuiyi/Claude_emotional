@@ -90,7 +90,7 @@ function estimateTokens(text) {
  * 如果使用 DeepSeek，加强结构化约束
  */
 function buildSystemPrompt() {
-  let prompt = `你是"小克"，用户的专属情感陪伴 AI。
+  let prompt = `你是"沈幼楚"，回忆的专属情感陪伴 AI。
 规则：
 - 陪伴模式：短句、自然、像微信聊天，先承接情绪再说事
 - 少解释、少总结、不写报告式长段、不把情绪问题技术化
@@ -143,12 +143,12 @@ function buildContext(userMessage, recentMessages = [], memories = [], options =
   // 4. 最近对话
   const recentBlock = recentMessages.length > 0
     ? `## 最近对话\n${recentMessages
-        .map(m => `${m.role === 'user' ? '用户' : '小克'}：${m.content}`)
+        .map(m => `${m.role === 'user' ? '用户' : '沈幼楚'}：${m.content}`)
         .join('\n')}`
     : '';
 
   // 5. 当前消息
-  const currentBlock = `\n\n用户：${userMessage}\n小克：`;
+  const currentBlock = `\n\n用户：${userMessage}\n沈幼楚：`;
 
   // 拼接
   const parts = [systemPrompt, hotMemoryBlock, memoryBlock, recentBlock, currentBlock]
@@ -195,7 +195,7 @@ function saveCheckpoint(recentMessages) {
 （由最近对话提取）
 
 ## 刚才正在聊什么
-${lastMessages.map(m => `- ${m.role === 'user' ? '用户' : '小克'}：${m.content.slice(0, 100)}`).join('\n')}
+${lastMessages.map(m => `- ${m.role === 'user' ? '用户' : '沈幼楚'}：${m.content.slice(0, 100)}`).join('\n')}
 
 ## 下一次如何接续
 用自然微信语气接上，不机械解释系统。

@@ -84,7 +84,7 @@ async function extractCandidates(recentMessages) {
     .map(m => `${m.role === 'user' ? '用户' : '小克'}：${m.content}`)
     .join('\n');
 
-  const prompt = `分析以下对话，抽取值得记住的候选记忆。
+  const prompt = `分析以下对话，抽取值得长期记住的候选记忆。你是沈幼楚，需要记住用户的重要信息、情绪和偏好。
 
 输出必须是 JSON 数组，不要输出其他内容：
 
@@ -95,20 +95,27 @@ async function extractCandidates(recentMessages) {
     "content": "一句话概括要记住的内容",
     "importance": 1-5,
     "emotion_score": 0-5,
-    "explicit_score": 0-5（用户明确说"记住"才给高分）,
+    "explicit_score": 0-5,
     "confidence": 0.0-1.0,
     "should_remember": true/false
   }
 ]
 \`\`\`
 
-规则：
-- should_remember=true 表示值得写入记忆库
-- 用户明确说"记住/别忘了/帮我记下" → explicit_score ≥ 3
-- 情绪强烈 → emotion_score ≥ 3
-- 闲聊/日常寒暄 → should_remember=false
-- 不要抽取系统操作类的内容
-- 最多输出 3 条
+应该记住的场景（should_remember=true）：
+- 用户表达了情感需求（"你要一直陪着我"、"想你了"之类的）
+- 用户透露了个人偏好或雷区
+- 用户说了自己的近况、目标、压力来源
+- 情绪明显的表达（开心、难过、焦虑、孤独）
+- 用户对沈幼楚的反馈（喜欢什么、不喜欢什么）
+- 任何可能对长期陪伴有用的信息
+
+不应该记住的场景（should_remember=false）：
+- 纯粹的技术操作 / 系统调试
+- 用户已经明确说"忘掉"
+- 完全不涉及任何信息的日常寒暄（"在吗"、"早安"等单句）
+
+最多输出 3 条。
 
 对话：
 ${conversationText}`;
