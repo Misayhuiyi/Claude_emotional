@@ -8,6 +8,9 @@
 const db = require('./db');
 const search = require('./search');
 const gate = require('./gate');
+const dailyTracker = require('./proactive-service/daily-tracker');
+const { features, enable, disable } = require('./features');
+const config = require('./config');
 
 const TOOLS = [
   {
@@ -33,6 +36,35 @@ const TOOLS = [
         importance: { type: 'number', default: 3 },
       },
       required: ['content'],
+    },
+  },
+  {
+    name: 'proactive_status',
+    description: '查看主动推送当前状态（今日已推送、各开关状态、下次推送时段）',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'proactive_pause',
+    description: '暂停或恢复主动推送',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        paused: { type: 'boolean', description: 'true=暂停, false=恢复' },
+      },
+      required: ['paused'],
+    },
+  },
+  {
+    name: 'proactive_trigger',
+    description: '手动触发一次主动资讯推送（用于测试或阿忆想听时）',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        type: { type: 'string', enum: ['weather', 'news', 'ai', 'study'], description: '推送类型' },
+      },
     },
   },
 ];
@@ -117,6 +149,63 @@ async function handleRequest(req) {
                 text: result.updated
                   ? `✅ 已更新已有记忆: ${args.content.slice(0, 50)}`
                   : `✅ 已记住: ${args.content.slice(0, 50)}`,
+              }],
+            });
+            break;
+          }
+
+          case 'proactive_status': {
+            const state = dailyTracker.getState();
+            const enabled = features.proactive;
+            const activeFeatures = Object.entries(features)
+              .filter(([k, v]) => v && k !== 'proactive')
+              .map(([k]) => k);
+
+            respond(id, {
+              content: [{
+                type: 'text',
+                text: [
+                  `主动推送状态: ${enabled ? '🟢 开启' : '🔴 关闭'}`,
+                  `今日已推送: ${state.pushCount}/${config.PROACTIVE.maxDaily} 条`,
+                  `上次推送: ${state.lastPushAt ? new Date(state.lastPushAt).toLocaleString() : '无'}`,
+                  `勿扰时段: ${config.PROACTIVE.quietHours[0]}-${config.PROACTIVE.quietHours[1]}`,
+                  `已开启功能: ${activeFeatures.length ? activeFeatures.join(', ') : '无'}`,
+                  `今日总结: ${state.summarySubmitted ? '✅ 已提交' : '❌ 未提交'}`,
+                ].join('\n'),
+              }],
+            });
+            break;
+          }
+
+          case 'proactive_pause': {
+            if (args.paused) {
+              disable('proactive');
+              respond(id, {
+                content: [{ type: 'text', text: '⏸ 主动推送已暂停。发送 proactive_pause paused:false 恢复。' }],
+              });
+            } else {
+              enable('proactive');
+              respond(id, {
+                content: [{ type: 'text', text: '▶️ 主动推送已恢复。' }],
+              });
+            }
+            break;
+          }
+
+          case 'proactive_trigger': {
+            const type = args.type || 'weather';
+            const scheduler = require('./proactive-service/scheduler');
+            enable('proactive');
+            // 临时开启对应 feature
+            const featureMap = { weather: 'infoWeather', news: 'infoNews', ai: 'infoAI', study: 'studyPush' };
+            if (featureMap[type]) enable(featureMap[type]);
+
+            await scheduler.manualTrigger(type);
+
+            respond(id, {
+              content: [{
+                type: 'text',
+                text: `✅ 已手动触发推送 (${type})，请在微信中查看结果。`,
               }],
             });
             break;

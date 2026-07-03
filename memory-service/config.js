@@ -70,4 +70,21 @@ module.exports = {
     candidateExpireDays: 14,
     workingExpireDays: 30,
   },
+
+  // 主动资讯推送
+  PROACTIVE: {
+    enabled: false,                  // 总开关（默认关闭）
+    quietHours: ['23:30', '08:30'], // 勿扰时段 HH:MM
+    maxDaily: 3,                     // 每日推送上限
+    minGapMinutes: 180,              // 两次推送间最小间隔（分钟）
+    summaryReminderStart: '22:00',   // 每日总结提醒开始时间
+    maxStudyWeekly: 7,               // 每周学习推送上限
+    maxRomanticWeekly: 3,            // 每周浪漫内容上限
+    noRepeatForms: 3,                // 连续 N 次推送不重复同一种形式
+    noRepeatOpenings: 7,             // N 天内不出现相同句式开头
+    pollIntervalMs: 10000,           // 调度器轮询间隔（毫秒）
+  },
+
+  // 默认城市（用于天气推送，后续可通过记忆或消息更新）
+  CITY: '广州',
 };
