@@ -12,13 +12,13 @@ const features = {
   stickers: false,       // 表情包检索与发送
 
   // ─── 主动资讯 ─────────────────────────────────
-  proactive: false,      // 主动推送总开关
-  infoWeather: false,    // 天气推送
-  infoNews: false,       // 新闻/热点
-  infoTrends: false,     // 网络热梗
-  infoAI: false,         // AI 行业资讯
-  studyPush: false,      // 学习督促
-  romanticContent: false,// 浪漫内容
+  proactive: true,       // 主动推送总开关
+  infoWeather: true,     // 天气推送
+  infoNews: true,        // 新闻/热点
+  infoTrends: true,      // 网络热梗
+  infoAI: true,          // AI 行业资讯
+  studyPush: true,       // 学习督促
+  romanticContent: true, // 浪漫内容
 
   // ─── 学习与外部内容 ───────────────────────────
   webLearning: false,    // 主动上网学习

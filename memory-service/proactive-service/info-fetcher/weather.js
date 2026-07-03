@@ -30,10 +30,11 @@ const WMO_CODES = {
  * @param {number} lon - 经度
  */
 async function getWeather(city = '广州', lat = 23.13, lon = 113.26) {
+  // 使用 current_weather=true（兼容性最好的参数格式）
   const url = `https://api.open-meteo.com/v1/forecast` +
     `?latitude=${lat}&longitude=${lon}` +
-    `&current=temperature_2m,weathercode,relative_humidity_2m,apparent_temperature` +
-    `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability,weathercode` +
+    `&current_weather=true` +
+    `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum` +
     `&timezone=Asia%2FShanghai`;
 
   const res = await fetch(url);
@@ -43,14 +44,14 @@ async function getWeather(city = '广州', lat = 23.13, lon = 113.26) {
 
   return {
     city,
-    temp: data.current.temperature_2m,
-    feelsLike: data.current.apparent_temperature,
-    humidity: data.current.relative_humidity_2m,
+    temp: data.current_weather.temperature,
+    feelsLike: null,
+    humidity: null,
     maxTemp: data.daily.temperature_2m_max[0],
     minTemp: data.daily.temperature_2m_min[0],
-    rainProb: data.daily.precipitation_probability[0],
-    weatherCode: data.current.weathercode,
-    description: decodeWMO(data.current.weathercode),
+    rainProb: data.daily.precipitation_sum ? Math.min(100, data.daily.precipitation_sum[0] * 10) : null,
+    weatherCode: data.current_weather.weathercode,
+    description: decodeWMO(data.current_weather.weathercode),
     fetchedAt: new Date().toISOString(),
   };
 }
