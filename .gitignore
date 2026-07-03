@@ -25,3 +25,6 @@ config.toml
 *.png
 *.jpg
 console.log*
+
+# 主动资讯运行时状态
+data/proactive-state.json

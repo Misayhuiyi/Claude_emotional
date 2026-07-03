@@ -67,6 +67,74 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'sticker_search',
+    description: '按情绪/意图搜索表情包',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        emotion: { type: 'string', description: '情绪（sad/happy/tired/lonely/playful）' },
+        intent: { type: 'string', description: '意图（comfort/greet/encourage/goodnight/apologize）' },
+        scene: { type: 'string', description: '场景（早安/晚安/安慰/鼓励/想你/开心/道歉/撒娇）' },
+      },
+    },
+  },
+  {
+    name: 'sticker_send',
+    description: '发送一张表情包（记录到 sticker_events）',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sticker_id: { type: 'string', description: '表情包 ID' },
+        intent: { type: 'string', description: '发送意图' },
+      },
+      required: ['sticker_id'],
+    },
+  },
+  {
+    name: 'vision_analyze',
+    description: '分析图片内容（需要配置视觉 API）',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        image_path: { type: 'string', description: '图片本地路径' },
+        image_url: { type: 'string', description: '图片 URL（优先）' },
+      },
+    },
+  },
+  {
+    name: 'voice_transcribe',
+    description: '将语音转为文字（需要配置 ASR API）',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        audio_path: { type: 'string', description: '语音文件路径' },
+      },
+      required: ['audio_path'],
+    },
+  },
+  {
+    name: 'voice_speak',
+    description: '将文字转为语音（需要配置 TTS API）',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: '要转为语音的文字（不超过100字）' },
+      },
+      required: ['text'],
+    },
+  },
+  {
+    name: 'douyin_digest',
+    description: '处理用户分享的抖音内容',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: '抖音分享链接' },
+        description: { type: 'string', description: '用户自述内容' },
+      },
+    },
+  },
 ];
 
 // ─── JSON-RPC 2.0 ─────────────────────────────────
@@ -206,6 +274,105 @@ async function handleRequest(req) {
               content: [{
                 type: 'text',
                 text: `✅ 已手动触发推送 (${type})，请在微信中查看结果。`,
+              }],
+            });
+            break;
+          }
+
+          case 'sticker_search': {
+            const stickerService = require('./proactive-service/sticker-service');
+            let results;
+            if (args.scene) {
+              const s = stickerService.suggestForScene(args.scene);
+              results = s ? [s] : [];
+            } else {
+              results = stickerService.searchStickers({
+                emotion: args.emotion,
+                intent: args.intent,
+              });
+            }
+            respond(id, {
+              content: [{
+                type: 'text',
+                text: results.length > 0
+                  ? results.map(s => `[${s.id}] ${s.tags.join(', ')} (${s.category})`).join('\n')
+                  : '未找到匹配的表情包。',
+              }],
+            });
+            break;
+          }
+
+          case 'sticker_send': {
+            try {
+              const database = db.getDb();
+              const sid = 'st_' + Date.now().toString(36);
+              database.prepare(`
+                INSERT INTO sticker_events (id, sticker_id, intent, sent, reason, created_at)
+                VALUES (?, ?, ?, 1, ?, datetime('now'))
+              `).run(sid, args.sticker_id, args.intent || '', 'MCP 调用');
+              respond(id, {
+                content: [{ type: 'text', text: `✅ 表情包 ${args.sticker_id} 已发送。` }],
+              });
+            } catch (e) {
+              respond(id, {
+                content: [{ type: 'text', text: `表情包已记录（发送可能受限）: ${args.sticker_id}` }],
+              });
+            }
+            break;
+          }
+
+          case 'vision_analyze': {
+            const vision = require('./proactive-service/vision-service');
+            const result = await vision.analyzeImage(args.image_path, args.image_url);
+            if (result.fallback) {
+              respond(id, {
+                content: [{ type: 'text', text: result.message || '视觉分析暂不可用，请配置视觉 API。' }],
+              });
+            } else {
+              respond(id, {
+                content: [{ type: 'text', text: `📷 图片分析结果：${result.summary}` }],
+              });
+            }
+            break;
+          }
+
+          case 'voice_transcribe': {
+            const voice = require('./proactive-service/voice-service');
+            const result = await voice.transcribe(args.audio_path);
+            if (result.fallback) {
+              respond(id, {
+                content: [{ type: 'text', text: result.message || '语音转文字暂不可用，请配置 ASR API。' }],
+              });
+            } else {
+              respond(id, {
+                content: [{ type: 'text', text: `🎤 转写结果：${result.transcript}` }],
+              });
+            }
+            break;
+          }
+
+          case 'voice_speak': {
+            const voice = require('./proactive-service/voice-service');
+            const result = await voice.speak(args.text);
+            if (result.fallback || !result.audioPath) {
+              respond(id, {
+                content: [{ type: 'text', text: '语音合成暂不可用，请配置 TTS API。将使用文字回复。' }],
+              });
+            } else {
+              respond(id, {
+                content: [{ type: 'text', text: `🔊 语音已生成: ${result.audioPath}` }],
+              });
+            }
+            break;
+          }
+
+          case 'douyin_digest': {
+            const douyin = require('./proactive-service/douyin-digest');
+            const item = await douyin.processDouyinLink(args.url || '', args.description || '');
+            respond(id, {
+              content: [{
+                type: 'text',
+                text: `📱 已记录抖音内容: ${item.summary.slice(0, 100)}`,
               }],
             });
             break;

@@ -1,0 +1,106 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-07-04",
+  "stickers": [
+    {
+      "id": "hug_001",
+      "path": "stickers/comfort/hug_001.png",
+      "emotion": ["sad", "tired", "lonely"],
+      "intent": ["comfort", "hug"],
+      "tags": ["抱抱", "安慰", "陪着", "没事"],
+      "category": "comfort",
+      "style": "温暖",
+      "description": "张开双臂的拥抱姿势"
+    },
+    {
+      "id": "nocry_001",
+      "path": "stickers/comfort/nocry_001.png",
+      "emotion": ["sad", "crying", "upset"],
+      "intent": ["comfort", "soothe"],
+      "tags": ["不哭", "别难过", "我在"],
+      "category": "comfort",
+      "style": "温柔",
+      "description": "轻轻擦泪的动作"
+    },
+    {
+      "id": "miss_001",
+      "path": "stickers/comfort/miss_001.png",
+      "emotion": ["sad", "lonely", "miss"],
+      "intent": ["comfort", "miss"],
+      "tags": ["想你", "在吗", "好久不见"],
+      "category": "miss",
+      "style": "思念",
+      "description": "托腮等待的表情"
+    },
+    {
+      "id": "cute_001",
+      "path": "stickers/cute/cute_001.png",
+      "emotion": ["happy", "playful", "shy"],
+      "intent": ["greet", "playful", "cute"],
+      "tags": ["可爱", "早安", "卖萌", "嘻嘻"],
+      "category": "cute",
+      "style": "可爱",
+      "description": "歪头微笑的可爱表情"
+    },
+    {
+      "id": "always_001",
+      "path": "stickers/cute/always_001.png",
+      "emotion": ["happy", "grateful", "loving"],
+      "intent": ["affirm", "promise"],
+      "tags": ["永远", "一直在", "陪着你", "约定"],
+      "category": "cute",
+      "style": "温暖",
+      "description": "拉勾勾的约定手势"
+    },
+    {
+      "id": "ok_001",
+      "path": "stickers/cute/ok_001.png",
+      "emotion": ["happy", "determined"],
+      "intent": ["agree", "encourage"],
+      "tags": ["好的", "没问题", "收到", "加油"],
+      "category": "cute",
+      "style": "元气",
+      "description": "比OK手势的元气表情"
+    },
+    {
+      "id": "cheer_001",
+      "path": "stickers/cheer/cheer_001.png",
+      "emotion": ["determined", "hopeful"],
+      "intent": ["encourage", "cheer"],
+      "tags": ["加油", "你可以的", "打气", "努力"],
+      "category": "cheer",
+      "style": "元气",
+      "description": "握拳加油的姿势"
+    },
+    {
+      "id": "night_001",
+      "path": "stickers/goodnight/night_001.png",
+      "emotion": ["peaceful", "tired", "loving"],
+      "intent": ["goodnight", "soothe"],
+      "tags": ["晚安", "好梦", "休息吧"],
+      "category": "goodnight",
+      "style": "温柔",
+      "description": "盖被子安睡的温馨场景"
+    },
+    {
+      "id": "sorry_001",
+      "path": null,
+      "emotion": ["sorry", "regretful", "shy"],
+      "intent": ["apologize", "makeup"],
+      "tags": ["对不起", "我错了", "原谅我"],
+      "category": "sorry",
+      "style": "歉意",
+      "description": "低头道歉的愧疚表情（图缺）"
+    }
+  ],
+  "suggestions": {
+    "早安": ["cute_001", "cute_003"],
+    "晚安": ["night_001"],
+    "安慰": ["hug_001", "nocry_001", "miss_001"],
+    "鼓励": ["cheer_001", "ok_001"],
+    "想你": ["miss_001", "always_001"],
+    "开心": ["cute_001", "ok_001", "always_001"],
+    "道歉": ["sorry_001", "cute_001"],
+    "撒娇": ["cute_001", "miss_001"]
+  }
+}
