@@ -22,6 +22,25 @@ const config = require('../config');
 let yesterdayWeather = null;
 
 /**
+ * 带表情包的投递（异步，不阻塞主流程）
+ */
+async function deliverWithSticker(content, type, slotName) {
+  let stickerPath = null;
+  if (features.stickers) {
+    try {
+      const sceneMap = {
+        'morning': '早安', 'noon': '开心', 'evening': '鼓励',
+        'weather_alert': '安慰', 'summary_reminder': '安慰',
+        'study_push': '鼓励', 'romantic': '想你',
+      };
+      const sf = require('./sticker-fetcher');
+      stickerPath = await sf.fetchSticker(sceneMap[type] || '开心');
+    } catch {}
+  }
+  await deliverWithSticker(content, type, slotName, { stickerPath });
+}
+
+/**
  * 主调度 tick
  */
 async function tick() {
@@ -36,7 +55,7 @@ async function tick() {
   if (features.studyPush) {
     const summaryMsg = studyPusher.checkDailySummary(dailyTracker);
     if (summaryMsg) {
-      await delivery.deliver(summaryMsg, 'summary_reminder', 'summary');
+      await deliverWithSticker(summaryMsg, 'summary_reminder', 'summary');
       return;
     }
 
@@ -45,7 +64,7 @@ async function tick() {
       const recentSummaries = getRecentSummaries();
       const declineMsg = studyPusher.checkDecliningTrend(recentSummaries);
       if (declineMsg) {
-        await delivery.deliver(declineMsg, 'study_push', 'summary_decline');
+        await deliverWithSticker(declineMsg, 'study_push', 'summary_decline');
         return;
       }
     }
@@ -57,7 +76,7 @@ async function tick() {
     if (romanceCtx.shouldSend) {
       const msg = await generateRomantic(romanceCtx);
       if (msg) {
-        await delivery.deliver(msg, 'romantic', 'romantic');
+        await deliverWithSticker(msg, 'romantic', 'romantic');
         return;
       }
     }
@@ -77,7 +96,7 @@ async function tick() {
   if (slot.type === 'night') {
     const greeting = await generateNightGreeting();
     if (greeting) {
-      await delivery.deliver(greeting, 'night_greeting', '晚安');
+      await deliverWithSticker(greeting, 'night_greeting', '晚安');
       return;
     }
   }
@@ -124,7 +143,7 @@ async function tick() {
   }
 
   // 投递
-  await delivery.deliver(content, slot.type, slot.name);
+  await deliverWithSticker(content, slot.type, slot.name);
 }
 
 /**
@@ -175,7 +194,7 @@ async function checkWeatherAlert() {
       const alert = triggers.checkWeatherAlert(today, yesterdayWeather);
       if (alert) {
         const msg = await summarizer.generateAlertMessage(alert.data);
-        if (msg) await delivery.deliver(msg, 'weather_alert', 'weather_alert');
+        if (msg) await deliverWithSticker(msg, 'weather_alert', 'weather_alert');
       }
     }
     if (today) yesterdayWeather = today;
@@ -300,7 +319,7 @@ async function manualTrigger(type) {
     if (study) content = study.content;
   }
 
-  if (content) await delivery.deliver(content, type, 'manual_' + type);
+  if (content) await deliverWithSticker(content, type, 'manual_' + type);
 }
 
 function start() {

@@ -9,7 +9,7 @@ const features = {
   vision: false,         // 图片理解
   voice: false,          // 语音输入（ASR）
   voiceReply: false,     // 语音回复（TTS）
-  stickers: false,       // 表情包检索与发送
+  stickers: true,        // 表情包检索与发送（通过 cc-connect send --image 发网上热图）
 
   // ─── 主动资讯 ─────────────────────────────────
   proactive: true,       // 主动推送总开关

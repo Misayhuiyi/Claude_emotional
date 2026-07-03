@@ -13,7 +13,9 @@
  * 同时写入 messages 表和 info_sources 表，确保记忆链路完整。
  */
 
-const { execSync } = require('child_process');
+const { exec, execSync } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
 const path = require('path');
 const db = require('../db');
 const dailyTracker = require('./daily-tracker');
@@ -23,17 +25,31 @@ const CC_CONNECT = 'cc-connect';
 const PROJECT = '沈幼楚';
 
 /**
- * 执行一次 cc-connect send
+ * 执行一次 cc-connect send（同步，用于简单文字消息）
  */
 function ccSend(...args) {
   try {
     const fullArgs = ['send', '--project', PROJECT, ...args];
     const result = execSync(`${CC_CONNECT} ${fullArgs.join(' ')}`, {
-      encoding: 'utf-8',
-      timeout: 15000,
-      windowsHide: true,
+      encoding: 'utf-8', timeout: 15000, windowsHide: true,
     });
     return { ok: true, output: result.trim() };
+  } catch (e) {
+    console.log(`[delivery] cc-connect send 失败: ${e.message}`);
+    return { ok: false, error: e.message };
+  }
+}
+
+/**
+ * 异步执行 cc-connect send（不阻塞主流程）
+ */
+async function ccSendAsync(...args) {
+  try {
+    const fullArgs = ['send', '--project', PROJECT, ...args];
+    const { stdout } = await execAsync(`${CC_CONNECT} ${fullArgs.join(' ')}`, {
+      timeout: 20000, windowsHide: true,
+    });
+    return { ok: true, output: stdout.trim() };
   } catch (e) {
     console.log(`[delivery] cc-connect send 失败: ${e.message}`);
     return { ok: false, error: e.message };
@@ -59,23 +75,26 @@ async function deliver(content, type, slotName, options = {}) {
   // ─── 1. 通过 cc-connect send 发送 ──────────
   try {
     if (options.ttsText) {
-      // TTS 语音（cc-connect 自带 TTS）
-      const r = ccSend('--tts', `"${options.ttsText.replace(/"/g, '\\"')}"`);
-      delivered = r.ok;
+      // TTS 语音（异步）
+      ccSendAsync('--tts', `"${options.ttsText.replace(/"/g, '\\"')}"`).then(r => {
+        if (!r.ok) console.log('[delivery] TTS 发送失败（不影响主流程）');
+      });
+      delivered = true;
     } else if (options.audioPath) {
-      // 发送语音文件
-      const r = ccSend('--audio', `"${options.audioPath}"`);
-      delivered = r.ok;
+      // 发送语音文件（异步）
+      ccSendAsync('--audio', `"${options.audioPath}"`).then(r => {
+        if (!r.ok) console.log('[delivery] 语音发送失败（不影响主流程）');
+      });
+      delivered = true;
     } else if (options.stickerPath) {
-      // 发送图片（表情包）+ 文字
-      if (content) {
-        ccSend('-m', `"${content.replace(/"/g, '\\"')}"`, '--image', `"${options.stickerPath}"`);
-      } else {
-        ccSend('--image', `"${options.stickerPath}"`);
-      }
+      // 发送图片（表情包）+ 文字（异步，图片上传较慢）
+      const textArg = content ? ['-m', `"${content.replace(/"/g, '\\"')}"`] : [];
+      ccSendAsync(...textArg, '--image', `"${options.stickerPath}"`).then(r => {
+        if (!r.ok) console.log('[delivery] 图片发送失败（不影响主流程）');
+      });
       delivered = true;
     } else {
-      // 纯文字
+      // 纯文字（同步，很快）
       ccSend('-m', `"${content.replace(/"/g, '\\"')}"`);
       delivered = true;
     }
@@ -84,8 +103,7 @@ async function deliver(content, type, slotName, options = {}) {
       console.log(`[delivery] ✅ cc-connect send: ${type}/${slotName}`);
     }
   } catch (e) {
-    console.log(`[delivery] ⚠️ cc-connect send 失败，回退写会话文件: ${e.message}`);
-    // 回退：直接写 session 文件
+    console.log(`[delivery] ⚠️ 发送失败，回退写会话文件: ${e.message}`);
     delivered = await fallbackToSessionFile(content);
   }
 
