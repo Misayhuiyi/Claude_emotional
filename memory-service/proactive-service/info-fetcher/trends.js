@@ -95,16 +95,68 @@ async function fetchDouyinHot() {
 }
 
 /**
+ * 获取小红书热门（公开搜索热词）
+ */
+async function fetchXiaohongshuHot() {
+  try {
+    const res = await fetch('https://www.xiaohongshu.com/api/sns/web/v1/search/trend', {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = data?.data?.trends || [];
+    return items.slice(0, 5).map(item => ({
+      source: 'xiaohongshu',
+      title: item.word || item.name || '',
+      heat: item.hot || 30,
+      url: `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(item.word || '')}`,
+      type: 'trend',
+      fetchedAt: new Date().toISOString(),
+    }));
+  } catch (e) {
+    console.log(`[trends] 小红书热门获取失败: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * 获取搜狗/微信热搜
+ */
+async function fetchSogouHot() {
+  try {
+    const res = await fetch('https://top.sogou.com/api/hot/rank', {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = data?.data?.list || [];
+    return items.slice(0, 5).map((item, i) => ({
+      source: 'sogou',
+      title: item.title || item.word || '',
+      heat: item.hot || item.score || 30,
+      url: item.url || '',
+      type: 'trend',
+      fetchedAt: new Date().toISOString(),
+    }));
+  } catch (e) {
+    console.log(`[trends] 搜狗热搜获取失败: ${e.message}`);
+    return [];
+  }
+}
+
+/**
  * 获取当前网络热梗（多源聚合）
  */
 async function fetchTrends() {
-  const [weibo, tieba, douyin] = await Promise.all([
+  const [weibo, tieba, douyin, xhs, sogou] = await Promise.all([
     fetchWeiboHot(),
     fetchTiebaHot(),
     fetchDouyinHot(),
+    fetchXiaohongshuHot(),
+    fetchSogouHot(),
   ]);
 
-  const all = [...weibo, ...tieba, ...douyin];
+  const all = [...weibo, ...tieba, ...douyin, ...xhs, ...sogou];
 
   // 去重 + 按热度排序
   const seen = new Set();

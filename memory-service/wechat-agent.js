@@ -11,6 +11,40 @@ const contextManager = require('./context-manager');
 const claudeRunner = require('./claude-runner');
 const config = require('./config');
 
+/**
+ * 检查消息是否为每日总结，并标记到 daily-tracker
+ */
+function checkSummarySubmission(message) {
+  try {
+    if (message.startsWith('#总结') || message.startsWith('#今日总结') || message.startsWith('今日总结')) {
+      const content = message.replace(/^#?(今日)?总结\s*/, '').trim();
+      const dailyTracker = require('./proactive-service/daily-tracker');
+      dailyTracker.markSummarySubmitted(content);
+      console.log(`[wechat] 📝 已标记今日总结: ${content.slice(0, 30)}...`);
+    }
+  } catch {}
+}
+
+/**
+ * 检查学习内容反馈
+ */
+function checkStudyFeedback(message) {
+  try {
+    const studyPusher = require('./proactive-service/study-pusher');
+    studyPusher.handleFeedback(message);
+  } catch {}
+}
+
+/**
+ * 检查浪漫内容反馈（记录阿忆的反应）
+ */
+function checkRomanticFeedback(message) {
+  try {
+    const dailyTracker = require('./proactive-service/daily-tracker');
+    dailyTracker.recordResponse();
+  } catch {}
+}
+
 async function main() {
   // cc-connect 通过 stdin 传入消息
   let input = '';
@@ -19,6 +53,11 @@ async function main() {
   process.stdin.on('end', async () => {
     const userMessage = input.trim();
     if (!userMessage) { process.exit(0); return; }
+
+    // 检查各类特殊消息
+    checkSummarySubmission(userMessage);
+    checkStudyFeedback(userMessage);
+    checkRomanticFeedback(userMessage);
 
     try {
       // 1. 写入消息

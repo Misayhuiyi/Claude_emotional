@@ -157,6 +157,41 @@ async function fetchArXiv() {
 }
 
 /**
+ * 获取 LangChain / CrewAI / MCP 框架官方更新（通过 GitHub Releases）
+ */
+async function fetchFrameworkUpdates() {
+  const repos = [
+    { name: 'LangChain', url: 'https://api.github.com/repos/langchain-ai/langchain/releases?per_page=3' },
+    { name: 'CrewAI', url: 'https://api.github.com/repos/joaomdmoura/crewai/releases?per_page=3' },
+    { name: 'MCP SDK', url: 'https://api.github.com/repos/modelcontextprotocol/typescript-sdk/releases?per_page=3' },
+  ];
+  const results = [];
+  for (const repo of repos) {
+    try {
+      const res = await fetch(repo.url, {
+        headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'shen-yuchu-companion/1.0' },
+      });
+      if (!res.ok) continue;
+      const releases = await res.json();
+      for (const r of (releases || []).slice(0, 2)) {
+        results.push({
+          source: repo.name,
+          title: `${repo.name} ${r.tag_name || r.name}: ${(r.body || '').split('\n')[0].slice(0, 100)}`,
+          summary: (r.body || '').slice(0, 200),
+          url: r.html_url,
+          type: 'ai_tool',
+          heat: 60,
+          fetchedAt: new Date().toISOString(),
+        });
+      }
+    } catch (e) {
+      console.log(`[ai-daily] ${repo.name} 更新获取失败: ${e.message}`);
+    }
+  }
+  return results;
+}
+
+/**
  * 获取中文 AI 媒体资讯（机器之心、量子位等）
  * 通过 RSS feed 获取
  */
@@ -202,15 +237,16 @@ async function fetchChineseAI() {
  * 获取 AI 行业资讯（全部数据源聚合）
  */
 async function fetchAIDaily() {
-  const [hf, github, hn, arxiv, cnAI] = await Promise.all([
+  const [hf, github, hn, arxiv, cnAI, frameworks] = await Promise.all([
     fetchHFDaily(),
     fetchGitHubTrending(),
     fetchHNAI(),
     fetchArXiv(),
     fetchChineseAI(),
+    fetchFrameworkUpdates(),
   ]);
 
-  const all = [...hf, ...github, ...hn, ...arxiv, ...cnAI];
+  const all = [...hf, ...github, ...hn, ...arxiv, ...cnAI, ...frameworks];
 
   // 按相关性排序
   const scored = all.map(item => ({
@@ -227,4 +263,4 @@ async function fetchAIDaily() {
     .slice(0, 5);
 }
 
-module.exports = { fetchAIDaily, relevanceScore };
+module.exports = { fetchAIDaily, relevanceScore, fetchFrameworkUpdates, fetchChineseAI };
