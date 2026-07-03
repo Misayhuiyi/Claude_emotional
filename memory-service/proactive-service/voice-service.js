@@ -7,8 +7,15 @@
  * - 默认不发长语音，每条不超过 20 秒
  * - 发送失败时自动降级为文字
  *
- * 注意：需要 ASR/TTS API Key，未配置时自动降级。
+ * 配置方式：在项目根目录创建 .env 文件（参见 .env.example）
+ *   ASR_PROVIDER=whisper / azure / aliyun
+ *   ASR_API_KEY=sk-xxx
+ *   TTS_PROVIDER=azure / aliyun / elevenlabs
+ *   TTS_API_KEY=xxx
+ *   TTS_REGION=eastasia
  */
+
+require('../env-loader').loadEnv();
 
 const fs = require('fs');
 const path = require('path');
@@ -17,23 +24,13 @@ const config = require('../config');
 const VOICE_REPLIES_DIR = path.join(config.PATHS.dataDir, 'media', 'voices', 'replies');
 fs.mkdirSync(VOICE_REPLIES_DIR, { recursive: true });
 
-// ASR/TTS 配置（用户需自行填入）
-let VOICE_CONFIG = {
-  asrProvider: null,     // 'whisper' | 'azure' | 'aliyun' | null
-  ttsProvider: null,     // 'azure' | 'aliyun' | 'elevenlabs' | null
-  apiKey: null,
-  region: null,
+// 从环境变量读取配置
+const VOICE_CONFIG = {
+  asrProvider: process.env.ASR_PROVIDER || null,
+  ttsProvider: process.env.TTS_PROVIDER || null,
+  apiKey: process.env.ASR_API_KEY || process.env.TTS_API_KEY || null,
+  region: process.env.ASR_REGION || process.env.TTS_REGION || null,
 };
-
-/**
- * 配置语音 API
- */
-function configureVoice({ asrProvider, ttsProvider, apiKey, region }) {
-  VOICE_CONFIG.asrProvider = asrProvider;
-  VOICE_CONFIG.ttsProvider = ttsProvider;
-  VOICE_CONFIG.apiKey = apiKey;
-  VOICE_CONFIG.region = region;
-}
 
 /**
  * 检查 ASR 是否可用

@@ -85,6 +85,8 @@ module.exports = {
     pollIntervalMs: 10000,           // 调度器轮询间隔（毫秒）
   },
 
-  // 默认城市（用于天气推送，后续可通过记忆或消息更新）
-  CITY: '广州',
+  // 默认城市（用于天气推送，可通过 .env 文件或环境变量 CITY 覆盖）
+  CITY: process.env.CITY || '广州',
+  CITY_LAT: parseFloat(process.env.CITY_LAT) || 23.13,
+  CITY_LON: parseFloat(process.env.CITY_LON) || 113.26,
 };

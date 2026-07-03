@@ -7,26 +7,20 @@
  * - 图片摘要以普通 message 形式进入 Memory Gate
  * - 视觉模型失败时降级为文字兜底
  *
- * 注意：需要视觉 API Key，未配置时自动降级。
+ * 配置方式：在项目根目录创建 .env 文件（参见 .env.example）：
+ *   VISION_PROVIDER=qwen
+ *   VISION_API_KEY=sk-xxx
  */
+
+require('../env-loader').loadEnv();
 
 const config = require('../config');
 
-// 视觉 API 配置（用户需自行填入）
-let VISION_CONFIG = {
-  provider: null,      // 'qwen' | 'glm' | 'doubao' | 'kimi' | null
-  apiKey: null,
-  endpoint: null,
+// 从环境变量读取配置
+const VISION_CONFIG = {
+  provider: process.env.VISION_PROVIDER || null,
+  apiKey: process.env.VISION_API_KEY || null,
 };
-
-/**
- * 配置视觉 API
- */
-function configureVision(provider, apiKey, endpoint) {
-  VISION_CONFIG.provider = provider;
-  VISION_CONFIG.apiKey = apiKey;
-  VISION_CONFIG.endpoint = endpoint;
-}
 
 /**
  * 检查视觉能力是否可用
