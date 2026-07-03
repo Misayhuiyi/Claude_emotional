@@ -34,8 +34,10 @@ const VOICE_CONFIG = {
 
 /**
  * 检查 ASR 是否可用
+ * local（本地 Whisper）不需要 API Key
  */
 function isASRAvailable() {
+  if (VOICE_CONFIG.asrProvider === 'local') return true;
   return !!(VOICE_CONFIG.asrProvider && VOICE_CONFIG.apiKey);
 }
 
@@ -48,11 +50,12 @@ function isTTSAvailable() {
 
 /**
  * 语音转文字（ASR）
+ * 支持：local（本地Whisper）、whisper（API）、azure、aliyun
  * @param {string} audioPath - 语音文件路径
  * @returns {Promise<{transcript: string|null, error: string|null, fallback: boolean}>}
  */
 async function transcribe(audioPath) {
-  if (!isASRAvailable()) {
+  if (!isASRAvailable() && VOICE_CONFIG.asrProvider !== 'local') {
     return {
       transcript: null,
       error: 'asr_not_configured',
@@ -63,6 +66,8 @@ async function transcribe(audioPath) {
 
   try {
     switch (VOICE_CONFIG.asrProvider) {
+      case 'local':
+        return await transcribeLocal(audioPath);
       case 'whisper':
         return await transcribeWhisper(audioPath);
       case 'azure':
@@ -74,6 +79,41 @@ async function transcribe(audioPath) {
     }
   } catch (e) {
     console.log(`[voice] ASR 失败: ${e.message}`);
+    return {
+      transcript: null,
+      error: e.message,
+      fallback: true,
+      message: '语音没听清，你再说一遍或者打字给我好吗？',
+    };
+  }
+}
+
+/**
+ * 本地 Whisper ASR（faster-whisper）
+ */
+async function transcribeLocal(audioPath) {
+  const { execSync } = require('child_process');
+  const path = require('path');
+  const scriptPath = path.resolve(__dirname, '..', '..', 'scripts', 'asr.py');
+
+  try {
+    const result = execSync(
+      `set HF_ENDPOINT=https://hf-mirror.com && python "${scriptPath}" "${audioPath}"`,
+      { encoding: 'utf-8', timeout: 60000, windowsHide: true, shell: true }
+    );
+    const data = JSON.parse(result.trim());
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    return {
+      transcript: data.transcript,
+      error: null,
+      fallback: false,
+    };
+  } catch (e) {
+    console.log(`[voice] 本地 ASR 失败: ${e.message}`);
     return {
       transcript: null,
       error: e.message,
@@ -213,7 +253,6 @@ function shouldUseVoice(context) {
 module.exports = {
   transcribe,
   speak,
-  configureVoice,
   isASRAvailable,
   isTTSAvailable,
   shouldUseVoice,

@@ -31,3 +31,19 @@ data/proactive-state.json
 
 # 环境变量（API密钥等敏感信息）
 .env
+
+# Whisper 本地模型文件（较大，按需下载）
+whisper/models/
+whisper/test.wav
+
+# 人声分离临时文件
+whisper/reference/separated/
+
+# 原始视频/音频文件
+whisper/reference/*.mp4
+whisper/reference/*.wav
+whisper/reference/*.xml
+
+# 媒体缓存
+data/media/stickers/
+data/media/voices/
