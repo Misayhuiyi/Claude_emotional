@@ -72,6 +72,21 @@ function scanSessionFile(filePath) {
           conversationId: PROJECT_NAME + '_' + sessionId,
         });
 
+        // 每日总结检测
+        if (msg.role === 'user' && (msg.content.startsWith('#总结') || msg.content.startsWith('#今日总结') || msg.content.startsWith('今日总结'))) {
+          try {
+            const dailyTracker = require('./proactive-service/daily-tracker');
+            const content = msg.content.replace(/^#?(今日)?总结\s*/, '').trim();
+            dailyTracker.markSummarySubmitted(content);
+            console.log('[session-watcher] 已标记今日总结');
+          } catch {}
+        }
+        // 学习反馈检测
+        if (msg.role === 'user') {
+          try { require('./proactive-service/study-pusher').handleFeedback(msg.content); } catch {}
+          try { require('./proactive-service/daily-tracker').recordResponse(); } catch {}
+        }
+
         processedMessages.add(id);
         newMessages.push({ role: msg.role, content: msg.content, messageId: id });
         imported++;
