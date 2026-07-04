@@ -306,11 +306,19 @@ async function handleRequest(req) {
                 intent: args.intent,
               });
             }
+            // 同时从网上搜索
+            try {
+              const sf = require('./proactive-service/sticker-fetcher');
+              const netPath = await sf.fetchSticker(args.scene || args.emotion || '开心');
+              if (netPath) {
+                results.unshift({ id: 'net_sticker', path: netPath, tags: ['网络表情'], category: 'network', _netPath: netPath });
+              }
+            } catch {}
             respond(id, {
               content: [{
                 type: 'text',
                 text: results.length > 0
-                  ? results.map(s => `[${s.id}] ${s.tags.join(', ')} (${s.category})`).join('\n')
+                  ? results.map(s => `[${s.id}] ${s.tags ? s.tags.join(', ') : ''} ${s.category || ''} ${s._netPath ? 'path:' + s._netPath : ''}`).join('\n')
                   : '未找到匹配的表情包。',
               }],
             });
@@ -318,21 +326,38 @@ async function handleRequest(req) {
           }
 
           case 'sticker_send': {
+            const stickerId = args.sticker_id;
+            let sentPath = null;
+            // 如果有路径，直接发送
+            if (args.sticker_id === 'net_sticker' || stickerId.includes('sticker_')) {
+              const fs = require('fs');
+              const stickerService = require('./proactive-service/sticker-service');
+              const index = stickerService.loadIndex();
+              const sticker = index.stickers.find(s => s.id === stickerId);
+              if (sticker && sticker.path) {
+                sentPath = require('path').join(config.PATHS.root, sticker.path);
+              }
+            }
+            // 发送
+            if (sentPath) {
+              const { exec } = require('child_process');
+              exec(`cc-connect send --image "${sentPath}" -p 沈幼楚`, { timeout: 15000 }, (err, stdout) => {
+                if (err) console.log('[sticker] 发送失败:', err.message);
+              });
+            }
+            // 记录
             try {
               const database = db.getDb();
               const sid = 'st_' + Date.now().toString(36);
-              database.prepare(`
-                INSERT INTO sticker_events (id, sticker_id, intent, sent, reason, created_at)
-                VALUES (?, ?, ?, 1, ?, datetime('now'))
-              `).run(sid, args.sticker_id, args.intent || '', 'MCP 调用');
-              respond(id, {
-                content: [{ type: 'text', text: `✅ 表情包 ${args.sticker_id} 已发送。` }],
-              });
-            } catch (e) {
-              respond(id, {
-                content: [{ type: 'text', text: `表情包已记录（发送可能受限）: ${args.sticker_id}` }],
-              });
-            }
+              database.prepare(`INSERT INTO sticker_events (id, sticker_id, intent, sent, reason, created_at) VALUES (?, ?, ?, 1, ?, datetime('now'))`)
+                .run(sid, stickerId, args.intent || '', sentPath ? '已发送' : '仅记录');
+            } catch {}
+            respond(id, {
+              content: [{
+                type: 'text',
+                text: sentPath ? '✅ 表情包已发送' : '表情包已记录（发送可能受限）',
+              }],
+            });
             break;
           }
 

@@ -22,14 +22,21 @@
 | 依赖 | 版本 | 安装 |
 |------|------|------|
 | Node.js | ≥ v18 | [nodejs.org](https://nodejs.org) |
+| Python | ≥ v3.10 | 用于 Whisper ASR + Demucs |
 | Claude Code CLI | 最新 | `npm install -g @anthropic-ai/claude-code` |
 | cc-connect | ≥ v1.4 | `npm install -g cc-connect` |
 | Git | 任意 | [git-scm.com](https://git-scm.com) |
+
+Python 依赖（安装后执行）：
+```bash
+pip install faster-whisper
+```
 
 验证环境：
 
 ```bash
 node --version    # v18+
+python --version  # v3.10+
 claude --version
 cc-connect --version
 ```
@@ -85,7 +92,44 @@ node scripts/init-db.js
 }
 ```
 
-### 5. 播种初始记忆（可选）
+### 5. 环境变量配置
+
+```bash
+cp .env.example .env
+# 编辑 .env 填入密钥
+```
+
+必填：
+- `VISION_API_KEY` — 图片理解（通义千问 Qwen3-VL-Plus）
+
+可选：
+- `TTS_API_KEY` — 语音合成（CosyVoice）
+- `CITY` — 天气城市（默认广州）
+
+### 6. 数据库迁移
+
+```bash
+node scripts/migrate-multimodal.js
+```
+
+### 7. 下载 Whisper 模型（ASR 语音转文字）
+
+```bash
+set HF_ENDPOINT=https://hf-mirror.com
+python -c "from faster_whisper import WhisperModel; WhisperModel('base',device='cpu',compute_type='int8',download_root='whisper/models'); print('done')"
+```
+
+### 8. 启动主动推送服务
+
+```bash
+# 手动启动
+node --max-old-space-size=4096 memory-service/proactive-main.js
+
+# 开机自启
+powershell -ExecutionPolicy Bypass -File scripts/install-proactive.ps1
+```
+
+### 9. 播种初始记忆（可选）
 
 ```bash
 node scripts/seed-memory.js
@@ -312,6 +356,7 @@ weight = importance × 2 + frequency × 1.5 + emotion_score × 2
 |------|------|------|
 | `cc-connect` | 开机启动 | 微信消息桥接 |
 | `shen-yuchu-session-watcher` | 开机启动 | 每 10 秒同步消息到记忆库 |
+| `shen-yuchu-proactive` | 开机启动 | 主动推送调度器（天气/资讯/学习/晚安） |
 | `shen-yuchu-summary` | 每天 03:00 | 生成昨日对话摘要 |
 | `shen-yuchu-maintenance` | 每天 04:00 | 遗忘维护（归档过期记忆） |
 
@@ -467,3 +512,45 @@ node scripts/backup-memory.js
 del data\memory.db
 node scripts/init-db.js
 ```
+
+---
+
+## 主动资讯推送（v3.1 新增）
+
+### 推送时段
+
+| 时段 | 时间 | 内容 |
+|------|------|------|
+| ☀️ 早安 | 08:30-09:30 | 天气 + 热点 + AI 动态 |
+| 🍚 午间 | 11:30-12:30 | 网络热梗/有趣新闻 |
+| 🌆 傍晚 | 17:00-19:00 | AI 学习资源/技术文章 |
+| 🌙 晚安 | 21:00-22:30 | 轻问候（不发资讯） |
+
+### 控制方式
+
+通过 `features.js` 控制各项开关，或微信内使用 MCP 工具：
+
+```
+proactive_status   # 查看当前状态
+proactive_pause    # 暂停推送
+proactive_trigger  # 手动触发一次
+```
+
+### 表情包
+
+聊天时沈幼楚会根据氛围自动发送合适表情包，从网络实时搜索热门图。
+你也可以发送表情包给她说"存一下"，她会分析后用 vision_analyze 看懂后保存到本地库。
+
+### 学习督促
+
+每天 22:00 起，如果还没写每日总结会温柔提醒。
+傍晚时段会推送 Agent 面试题、大模型八股等学习内容。
+
+### 图片理解
+
+发送图片后，沈幼楚自动调用 Qwen3-VL-Plus 分析内容，基于分析结果回复。
+
+### 语音
+
+发送语音后自动转写为文字（本地 Whisper，免费离线）。
+TTS 语音回复需配置 CosyVoice API Key。
