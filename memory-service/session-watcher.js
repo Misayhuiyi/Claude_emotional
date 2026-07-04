@@ -11,6 +11,18 @@ const path = require('path');
 const db = require('./db');
 const gate = require('./gate');
 
+// 图片识别器
+let visionService = null;
+function getVisionService() {
+  if (!visionService) {
+    try { visionService = require('./proactive-service/vision-service'); } catch {}
+  }
+  return visionService;
+}
+
+// 跟踪已处理的图片
+let processedImages = new Set();
+
 const SESSION_DIR = path.join(require('os').homedir(), '.cc-connect', 'sessions');
 const PROJECT_NAME = '沈幼楚';
 
@@ -124,8 +136,54 @@ async function scanAll() {
 
   if (totalImported > 0) {
     console.log(`[session-watcher] 导入 ${totalImported} 条新消息`);
+    // 检查是否有新图片到达
+    await checkNewImages(allNewMessages);
     // 新消息到达 → 运行 Memory Gate（完整对话上下文）
     await runMemoryGate(allNewMessages);
+  }
+}
+
+/**
+ * 检查新消息中是否有图片，自动调用视觉分析
+ */
+async function checkNewImages(newMessages) {
+  const vision = getVisionService();
+  if (!vision || !vision.isVisionAvailable()) return;
+
+  const attachDir = path.join(SESSION_DIR, '..', 'attachments');
+  // 实际目录在项目下的 .cc-connect/attachments/
+  const projectAttachDir = path.join(require('./config').PATHS.root, '.cc-connect', 'attachments');
+
+  for (const dir of [projectAttachDir, attachDir]) {
+    if (!fs.existsSync(dir)) continue;
+    try {
+      const files = fs.readdirSync(dir).filter(f => f.endsWith('.jpg') || f.endsWith('.png') || f.endsWith('.jpeg'));
+      for (const file of files) {
+        const filePath = path.join(dir, file);
+        if (processedImages.has(filePath)) continue;
+        processedImages.add(filePath);
+
+        console.log(`[session-watcher] 📷 检测到新图片: ${file}`);
+        try {
+          const result = await vision.analyzeImage(filePath);
+          if (!result.fallback && result.summary) {
+            // 将图片分析结果写入 messages 表
+            const analysisId = 'vis_' + Date.now().toString(36);
+            db.insertMessage({
+              id: analysisId,
+              role: 'system',
+              content: `[图片分析] ${result.summary}`,
+              source: 'vision-service',
+              platform: 'auto',
+              conversationId: 'proactive_img_analysis',
+            });
+            console.log(`[session-watcher] ✅ 图片分析完成: ${result.summary.slice(0, 60)}`);
+          }
+        } catch (e) {
+          console.log(`[session-watcher] 图片分析失败: ${e.message}`);
+        }
+      }
+    } catch (e) { /* 目录可能不存在 */ }
   }
 }
 

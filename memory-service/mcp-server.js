@@ -92,6 +92,21 @@ const TOOLS = [
     },
   },
   {
+    name: 'sticker_save',
+    description: '收藏一张表情包到本地库（回忆发来的表情包，分析后保存，下次自动使用）',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        image_path: { type: 'string', description: '图片本地路径' },
+        emotion: { type: 'string', description: '情绪（sad/happy/tired/lonely/playful/neutral）' },
+        intent: { type: 'string', description: '意图（comfort/greet/encourage/goodnight/miss/apologize/cute）' },
+        tags: { type: 'string', description: '逗号分隔的标签，如 抱抱,可爱,早安' },
+        category: { type: 'string', description: '分类（comfort/cute/miss/cheer/sorry/goodnight）' },
+      },
+      required: ['image_path', 'emotion', 'intent', 'category'],
+    },
+  },
+  {
     name: 'vision_analyze',
     description: '分析图片内容（需要配置视觉 API）',
     inputSchema: {
@@ -318,6 +333,26 @@ async function handleRequest(req) {
                 content: [{ type: 'text', text: `表情包已记录（发送可能受限）: ${args.sticker_id}` }],
               });
             }
+            break;
+          }
+
+          case 'sticker_save': {
+            const stickerService = require('./proactive-service/sticker-service');
+            const tags = args.tags ? args.tags.split(/[,，]/).map(t => t.trim()).filter(Boolean) : [];
+            const result = stickerService.saveSticker(args.image_path, {
+              emotion: args.emotion || 'neutral',
+              intent: args.intent || 'greet',
+              tags,
+              category: args.category || 'cute',
+            });
+            respond(id, {
+              content: [{
+                type: 'text',
+                text: result.isNew
+                  ? `✅ 表情包已收藏成功: ${result.id} (${args.category})\n下次在合适的场景我会用它的～`
+                  : `📌 表情包已存在: ${result.id}，无需重复收藏。`,
+              }],
+            });
             break;
           }
 

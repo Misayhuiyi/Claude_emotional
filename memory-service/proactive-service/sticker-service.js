@@ -132,10 +132,64 @@ function decideSticker(content, context) {
   return null;
 }
 
+/**
+ * 收藏表情包到本地库
+ * @param {string} imagePath - 原始图片路径
+ * @param {Object} meta - 元数据
+ * @param {string} meta.emotion - 情绪
+ * @param {string} meta.intent - 意图
+ * @param {Array} meta.tags - 标签
+ * @param {string} meta.category - 分类
+ */
+function saveSticker(imagePath, meta) {
+  const fs = require('fs');
+  const path = require('path');
+  const crypto = require('crypto');
+
+  // 确定分类
+  const category = meta.category || 'cute';
+  const categoryDir = path.join(config.PATHS.root, 'stickers', category);
+  fs.mkdirSync(categoryDir, { recursive: true });
+
+  // 生成文件名
+  const ext = path.extname(imagePath) || '.jpg';
+  const hash = crypto.createHash('md5').update(imagePath).digest('hex').slice(0, 8);
+  const stickerId = `${category}_${hash}`;
+  const destPath = path.join(categoryDir, `${stickerId}${ext}`);
+
+  // 复制到 stickers 目录
+  fs.copyFileSync(imagePath, destPath);
+
+  // 更新索引
+  const index = loadIndex();
+  const stickerPath = `stickers/${category}/${stickerId}${ext}`;
+
+  // 检查是否已存在
+  const existing = index.stickers.find(s => s.id === stickerId);
+  if (!existing) {
+    index.stickers.push({
+      id: stickerId,
+      path: stickerPath,
+      emotion: meta.emotion ? [meta.emotion] : ['neutral'],
+      intent: meta.intent ? [meta.intent] : ['greet'],
+      tags: meta.tags || [],
+      category,
+      style: meta.style || '收藏',
+      description: meta.description || '用户收藏的表情包',
+    });
+    fs.writeFileSync(STICKER_INDEX_PATH, JSON.stringify(index, null, 2), 'utf-8');
+    stickerIndex = index; // 刷新缓存
+  }
+
+  console.log(`[sticker] ✅ 已收藏: ${stickerId} (${category})`);
+  return { id: stickerId, path: stickerPath, isNew: !existing };
+}
+
 module.exports = {
   searchStickers,
   suggestForScene,
   canSendSticker,
   decideSticker,
+  saveSticker,
   loadIndex,
 };

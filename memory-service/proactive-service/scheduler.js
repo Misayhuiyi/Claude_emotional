@@ -185,16 +185,21 @@ async function collectData(slot) {
 }
 
 /**
- * 天气突变检测
+ * 天气突变检测（今天仅触发一次）
  */
+let weatherAlertSentToday = false;
 async function checkWeatherAlert() {
+  if (weatherAlertSentToday) return;
   try {
     const today = await weather.fetchWeather(config.CITY);
     if (today && yesterdayWeather) {
       const alert = triggers.checkWeatherAlert(today, yesterdayWeather);
       if (alert) {
         const msg = await summarizer.generateAlertMessage(alert.data);
-        if (msg) await deliverWithSticker(msg, 'weather_alert', 'weather_alert');
+        if (msg) {
+          await deliverWithSticker(msg, 'weather_alert', 'weather_alert');
+          weatherAlertSentToday = true;
+        }
       }
     }
     if (today) yesterdayWeather = today;
@@ -323,6 +328,10 @@ async function manualTrigger(type) {
 }
 
 function start() {
+  // 新的一天重置
+  weatherAlertSentToday = false;
+  dailyTracker.resetDaily();
+
   console.log('[scheduler] 调度器已启动 (轮询间隔: ' + config.PROACTIVE.pollIntervalMs + 'ms)');
   console.log('[scheduler] 当前开关:', Object.entries(features).filter(([, v]) => v).map(([k]) => k).join(', ') || '全部关闭');
 
