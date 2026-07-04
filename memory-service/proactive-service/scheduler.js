@@ -70,7 +70,17 @@ async function tick() {
     }
   }
 
-  // ─── 4. 定时时段推送 ────────────────────────
+  // ─── 4. 晚安问候（21:00-23:00）─────────────────
+  const nowNight = new Date();
+  if (nowNight.getHours() >= 21 && nowNight.getHours() < 23 && !dailyTracker.hasSlotFired('晚安')) {
+    const greeting = await generateNightGreeting();
+    if (greeting) {
+      await deliverSimple(greeting, 'night_greeting', '晚安');
+      return;
+    }
+  }
+
+  // ─── 5. 定时时段推送 ────────────────────────
   const pushCheck = triggers.shouldPushNow({
     now: new Date(),
     dailyTracker,
@@ -79,15 +89,6 @@ async function tick() {
   if (!pushCheck.shouldPush) return;
 
   const slot = pushCheck.slot;
-
-  // 晚安时段：只发轻问候，不发资讯
-  if (slot.type === 'night') {
-    const greeting = await generateNightGreeting();
-    if (greeting) {
-      await deliverSimple(greeting, 'night_greeting', '晚安');
-      return;
-    }
-  }
 
   // 数据收集
   const collected = await collectData(slot);
