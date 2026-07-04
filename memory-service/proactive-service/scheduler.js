@@ -24,7 +24,7 @@ let yesterdayWeather = null;
 /**
  * 带表情包的投递（异步，不阻塞主流程）
  */
-async async function deliverSimple(content, type, slotName) {
+async function deliverSimple(content, type, slotName) {
   // 随机决定是否附带表情包（40% 概率）
   let stickerPath = null;
   if (features.stickers && Math.random() < 0.4) {
