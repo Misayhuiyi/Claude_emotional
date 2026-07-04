@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./db');
 const gate = require('./gate');
+const summarize = require('./summarize');
 
 // 图片识别器
 let visionService = null;
@@ -131,6 +132,16 @@ async function runMemoryGate(newMessages) {
       console.log(`  🧠 Memory Gate: 抽取 ${result.extracted} 条记忆`);
       result.updated.forEach(u => {
         console.log(`     [${u.status}] w=${u.weight} ${u.content.slice(0, 50)}`);
+      });
+    }
+    // 每 20 轮对话自动更新一次 current_state.md
+    const msgCount = db.getDb().prepare('SELECT COUNT(*) as c FROM messages').get().c;
+    if (msgCount % 20 === 0) {
+      setImmediate(async () => {
+        try {
+          await summarize.updateCurrentState(chunk, '');
+          console.log('  📝 current_state.md 已更新');
+        } catch {}
       });
     }
   } catch (e) {
