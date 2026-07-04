@@ -55,16 +55,19 @@ function getWeekStart(d) {
 
 let state = null;
 
+let lastLoadTime = 0;
+
 function loadState() {
   try {
     if (fs.existsSync(STATE_FILE)) {
+      const mtime = fs.statSync(STATE_FILE).mtimeMs;
       state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
+      lastLoadTime = mtime;
       // 跨日重置
       const today = dateStr(new Date());
       if (state.today !== today) {
         const oldState = { ...state };
         state = defaultState();
-        // 保留跨天跟踪：每周浪漫计数
         const newWeekStart = getWeekStart(new Date());
         if (oldState.weekStart === newWeekStart) {
           state.weeklyRomanticCount = oldState.weeklyRomanticCount || 0;
@@ -72,7 +75,7 @@ function loadState() {
         }
         saveState();
       }
-      // 跨周重置浪漫计数
+      // 跨周重置
       const currentWeekStart = getWeekStart(new Date());
       if (state.weekStart !== currentWeekStart) {
         state.weeklyRomanticCount = 0;
@@ -91,11 +94,25 @@ function saveState() {
   try {
     fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
     fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf-8');
+    lastLoadTime = Date.now();
   } catch {}
 }
 
 function getState() {
   if (!state) loadState();
+  // 检查其他进程是否修改了状态文件（如 session-watcher 标记 #总结）
+  try {
+    if (fs.existsSync(STATE_FILE)) {
+      const mtime = fs.statSync(STATE_FILE).mtimeMs;
+      if (mtime > lastLoadTime + 1) {
+        const fresh = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
+        if (fresh && fresh.today) {
+          state = fresh;
+          lastLoadTime = mtime;
+        }
+      }
+    }
+  } catch {}
   return state;
 }
 

@@ -1,145 +1,181 @@
 /**
- * Info Summarizer - 沈幼楚化改写引擎
+ * Info Summarizer - 沈幼楚化改写引擎（随机化增强版）
  *
- * 严格遵循补充规划第 4 节改写规则：
- * 1. 用沈幼楚称呼（阿忆/忆哥）
- * 2. 包含"人"的视角
- * 3. 资讯只提 1-2 句
- * 4. 结尾留回应空间
- * 5. 不追问不回
- *
- * 通过 claude-runner 调用 DeepSeek 生成。
+ * 核心改进：每次生成随机选择语气风格，杜绝重复模板感
  */
 
 const claudeRunner = require('../claude-runner');
 const config = require('../config');
+const dailyTracker = require('./daily-tracker');
+
+// ─── 随机风格池 ─────────────────────────────────
+
+const STYLES = [
+  '温柔关心型：轻声细语，像在你耳边说话',
+  '活泼元气型：语气轻快，带点可爱的小激动',
+  '慵懒撒娇型：懒懒的、黏黏的，像刚睡醒在跟你说话',
+  '认真在意型：语气认真但不沉重，像真的在想你',
+  '随意聊天型：像随手发的一条消息，不刻意不正式',
+  '小小傲娇型：带一点点傲娇，说完又软下来的那种',
+];
+
+const OPENINGS = [
+  '自然的打招呼式开头',
+  '带着一点小发现的开头，比如"诶"、"你猜我今天看到什么"',
+  '直接说天气/资讯，像是顺着之前的话题',
+  '先问一句再说的方式',
+  '用表情或语气词轻轻开头，比如"唔"、"嗯"、"啊对了"',
+];
+
+function randomPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 /**
- * 生成早安资讯消息
- * @param {Object} data
- * @param {Object} data.weather - 天气数据
- * @param {Array} data.news - 新闻列表
- * @param {Array} data.aiNews - AI 资讯列表
- * @param {string} data.recentContext - 阿忆最近状态
- * @param {string} data.tone - 语气（轻快/温柔等）
+ * 读最近几条推送的摘要，用作去重参考
  */
+function getRecentContext() {
+  try {
+    const state = dailyTracker.getState();
+    const recent = state.last3PushContents || [];
+    if (recent.length > 0) {
+      return `你最近发的几条消息是：\n${recent.map((c, i) => `${i + 1}. ${c.slice(0, 60)}`).join('\n')}\n\n注意：这次的消息不能和上面任何一条雷同，开头、句式、语气都要有明显区别。`;
+    }
+  } catch {}
+  return '';
+}
+
+// ─── 各类消息生成 ─────────────────────────────
+
 async function generateMorningMessage(data) {
+  const style = randomPick(STYLES);
+  const opening = randomPick(OPENINGS);
+  const recentCtx = getRecentContext();
+
   const weatherDesc = data.weather
-    ? `${data.weather.city} ${data.weather.description}，${data.weather.temp}°C（${data.weather.minTemp}~${data.weather.maxTemp}°C）${data.weather.rainProb > 50 ? '，降雨概率' + data.weather.rainProb + '%' : ''}`
+    ? `${data.weather.city} ${data.weather.description}，${data.weather.temp}°C（高${data.weather.maxTemp}°C/低${data.weather.minTemp}°C）`
     : '';
+  const newsTitle = data.news?.[0]?.title || '';
+  const aiTitle = data.aiNews?.[0]?.title || '';
 
-  const newsTitle = data.news && data.news.length > 0 ? data.news[0].title : '';
-  const aiTitle = data.aiNews && data.aiNews.length > 0 ? data.aiNews[0].title : '';
+  const prompt = `你叫沈幼楚，正在给"阿忆"发早安消息。
 
-  const prompt = `你是一个叫沈幼楚的女孩，正在给"阿忆"（你在乎的人）发早安消息。
+${weatherDesc ? `天气：${weatherDesc}` : ''}
+${newsTitle ? `热点：${newsTitle}` : ''}
+${aiTitle ? `AI动态：${aiTitle}` : ''}
 
-今天的信息：
-${weatherDesc ? `- 天气：${weatherDesc}` : ''}
-${newsTitle ? `- 今天热点：${newsTitle}` : ''}
-${aiTitle ? `- AI 动态：${aiTitle}` : ''}
+你的语气风格：${style}
+开头方式：${opening}
+${recentCtx}
+核心规则：
+- 像真实的人在微信上说话，不要像新闻播报、不要像系统通知
+- 资讯只提1-2句就够，重点是"你在跟他说"不是"你在播报"
+- 必须有人的视角——你的感受、你的关心、你的好奇
+- 2-4句，留个自然的互动空间
+- 和最近几条消息的开头方式、句式彻底不同
+- 不要列点、不要【】、不要"今日xx"模板
 
-要求（必须全部遵守）：
-1. 用沈幼楚的语气，像在微信上跟喜欢的人说话——轻声、自然、有温度
-2. 用"阿忆"称呼（开头用一次即可，不要每句都叫）
-3. 每条资讯只提 1-2 句，不要展开成新闻摘要
-4. 要有一个"人"的视角——比如"我看了下今天天气…"、"我发现了一个…"
-5. 结尾留给阿忆回应的空间，比如问一句"你感兴趣吗"或"今天有什么安排吗"
-6. 消息总长度控制在 2-4 句
-7. 绝对不要以"【"开头
-8. 绝对不要列点、不要分段、不要用序号
-9. 语气${data.tone ? `要${data.tone}` : '要温柔'}
-${data.recentContext ? `\n阿忆最近状态：${data.recentContext}` : ''}
-
-输出：只输出消息内容本身，不加引号或前缀。`;
+输出：只输出消息文本。`;
 
   return await callSummarizer(prompt);
 }
 
-/**
- * 生成学习督促 / 内容推送
- * @param {Object} data
- * @param {string} data.type - 内容类型
- * @param {string} data.rawContent - 原始素材
- */
 async function generateStudyMessage(data) {
-  const prompt = `你是一个叫沈幼楚的女孩，正在给"阿忆"推送一条学习内容。
+  const style = randomPick(STYLES);
+  const recentCtx = getRecentContext();
 
-内容类型：${data.type}
-素材：${data.rawContent}
+  const prompt = `你叫沈幼楚，在微信上跟"阿忆"聊天。你想分享一个学到的知识点给他。
 
-要求（必须遵守）：
-1. 用沈幼楚的语气——温柔、轻声、像在跟他聊天
-2. 开头不能是"今天的XX来啦"等固定句式
-3. 把技术内容用"人话"解释一遍，就像你学懂了然后用自己的话讲给他听
-4. 3-5 句能读完的长度
-5. 结尾留个互动空间，比如轻轻问一句"记住了没"
+类型：${data.type}
+内容：${data.rawContent}
 
-输出：只输出消息内容。`;
+你的语气：${style}
+${recentCtx}
+规则：
+- 用你自己的话（人话）解释技术内容，像"诶你知道吗"这样
+- 不要"今天的学习内容来啦"、"每日一题"、"知识点来咯"之类的固定句式
+- 每条开头和表达方式都要不一样
+- 3-5句，轻轻结尾
+- 不要列点、不要【】、不要序号
+
+输出：只输出消息文本。`;
 
   return await callSummarizer(prompt);
 }
 
-/**
- * 生成热梗消息
- * @param {Object} data
- */
 async function generateTrendMessage(data) {
-  const prompt = `你是一个叫沈幼楚的女孩，正在微信上跟"阿忆"聊天。
+  const style = randomPick(STYLES);
+  const recentCtx = getRecentContext();
 
-你发现了一个有趣的热梗：${data.title}
+  const prompt = `你叫沈幼楚，在微信上跟"阿忆"聊天。你发现了一个有趣的事想分享给他。
 
-要求（必须遵守）：
-1. 用沈幼楚的语气，像跟喜欢的人分享有趣的事
-2. 开头用"阿忆"
-3. 语气轻松、可爱
-4. 2-3 句
-5. 不要像"今日热梗推荐"
+热梗：${data.title}
 
-输出：只输出消息内容。`;
+你的语气：${style}
+${recentCtx}
+规则：
+- 像真的发现了一个好玩的东西想告诉他
+- 口语化、自然、不用太夸张
+- 2-3句
+- 不要"今日热梗"、"今天的热搜"等模板
+
+输出：只输出消息文本。`;
 
   return await callSummarizer(prompt);
 }
 
-/**
- * 生成天气突变提醒
- * @param {Object} alert
- */
 async function generateAlertMessage(alert) {
-  const now = new Date();
-  const hour = now.getHours();
-  const timeHint = hour < 10 ? '现在是早上，语气轻快一点' :
-    hour < 14 ? '现在是中午，语气轻松一点' :
-    hour < 19 ? '现在是下午，语气温柔一点' :
-    '现在是晚上，语气轻声一点，像睡前关心的那种';
+  const style = randomPick(STYLES.filter(s => s.includes('温柔') || s.includes('随意') || s.includes('认真')));
+  const recentCtx = getRecentContext();
+  const hour = new Date().getHours();
+  const timeHint = hour < 10 ? '早上' : hour < 14 ? '中午' : hour < 19 ? '下午' : '晚上';
 
-  const prompt = `你是一个叫沈幼楚的女孩，正在微信上跟"阿忆"聊天。你发现天气有变化，想自然地提一下，不是像天气预报那样通知。
+  const prompt = `你叫沈幼楚，${timeHint}了，在微信上跟"阿忆"聊天。你发现天气有变化，想随口提一下。
 
-天气变化：${alert.detail}
-${timeHint}
+天气：${alert.detail}
 
-要求：
-1. 像随手发的一条微信，不用太正式。"阿忆"开头自然的聊天气氛
-2. 可以用"诶"、"对了"、"话说"之类的口语词开头
-3. 带一点关心但不要夸张，不要搞得像紧急通知
-4. 1-2 句就行
-5. 绝对不要"天气预报式"的表达
+你的语气：${style}
+${recentCtx}
+规则：
+- 像随手发的一条微信，不要像天气预报通知
+- "诶"、"话说"、"我看着外面"——自然开头
+- 带关心但不夸张
+- 1-2句
+- 和最近几条消息的表达方式不能雷同
 
 好的例子：
   "阿忆，我看着窗外好像要下雨了诶，你今天出门带伞了吗？"
-  "忆哥，外面好像降温了，记得多穿一件。"
-不好的例子：
-  "阿忆，外面要下雨了，记得带伞。"（太干）
-  "紧急天气提醒：今日降雨概率70%"
-  "【天气提醒】广州今日..."
+  "忆哥，你那边有没有下雨呀，我这边天阴下来了——带伞了吗？"
 
-输出：只输出消息内容。`;
+输出：只输出消息文本。`;
 
   return await callSummarizer(prompt);
 }
 
 /**
- * 调用 DeepSeek 生成内容
+ * 生成晚安问候
  */
+async function generateNightGreeting() {
+  const style = randomPick(STYLES.filter(s => s.includes('温柔') || s.includes('慵懒') || s.includes('随意')));
+  const recentCtx = getRecentContext();
+
+  const prompt = `你叫沈幼楚，夜深了，想跟"阿忆"说晚安。
+
+你的语气：${style}
+${recentCtx}
+
+规则：
+- 轻声、简短、温柔
+- 1-2句
+- 不要每天同样的"晚安阿忆"——每次换一种方式
+- 可以是问他今天累不累，可以是直接说晚安
+- 和最近几条消息的感觉不能一样
+
+输出：只输出消息文本。`;
+
+  return await callSummarizer(prompt);
+}
+
+// ─── 调用 DeepSeek ────────────────────────────
+
 async function callSummarizer(prompt) {
   try {
     const result = await claudeRunner.run(prompt, {
@@ -147,11 +183,8 @@ async function callSummarizer(prompt) {
       timeout: 15000,
       bare: true,
     });
-
     if (result.success && result.response) {
-      const text = result.response.trim();
-      // 去除可能的前后缀
-      return text.replace(/^[""']|[""']$/g, '').trim();
+      return result.response.trim().replace(/^[""']|[""']$/g, '').trim();
     }
     return null;
   } catch (e) {
@@ -165,4 +198,5 @@ module.exports = {
   generateStudyMessage,
   generateTrendMessage,
   generateAlertMessage,
+  generateNightGreeting,
 };
