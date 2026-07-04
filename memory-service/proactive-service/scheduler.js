@@ -120,10 +120,30 @@ async function tick() {
     return;
   }
 
-  // 五项校验
+  // ─── 5. 选择形式（补充规划 4.5）───
+  const formRandomizer = require('./info-form-randomizer');
+  const selectedForm = formRandomizer.selectForm({
+    mood: 'normal',
+    isImportant: false,
+    isComforting: slot.type === 'night',
+    isNight: slot.type === 'night',
+    type: slot.type,
+  });
+
+  // ─── 6. 获取表情包（如需要）────────────
+  let stickerPath = null;
+  if (selectedForm.requires.includes('stickers') && features.stickers) {
+    try {
+      const sf = require('./sticker-fetcher');
+      const sceneMap = { morning:'早安', noon:'开心', evening:'鼓励', night:'晚安' };
+      stickerPath = await sf.fetchSticker(sceneMap[slot.type] || '开心');
+    } catch {}
+  }
+
+  // ─── 7. 五项校验（补充规划 4.9）─────────
   const validation = await validator.validatePush({
     content, type: slot.type, slot: slot.name,
-    form: 'text_only', fetchedAt: new Date().toISOString(),
+    form: selectedForm.id, fetchedAt: new Date().toISOString(),
   }, dailyTracker);
 
   if (!validation.pass) {
@@ -131,8 +151,8 @@ async function tick() {
     return;
   }
 
-  // 投递
-  await deliverSimple(content, slot.type, slot.name);
+  // ─── 8. 投递 ──────────────────────────
+  await delivery.deliver(content, slot.type, slot.name, { stickerPath });
 }
 
 /**
