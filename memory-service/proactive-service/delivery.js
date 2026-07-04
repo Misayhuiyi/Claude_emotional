@@ -94,8 +94,10 @@ async function deliver(content, type, slotName, options = {}) {
       });
       delivered = true;
     } else {
-      // 纯文字（同步，很快）
-      ccSend('-m', `"${content.replace(/"/g, '\\"')}"`);
+      // 纯文字（异步，避免 execSync 阻塞事件循环）
+      ccSendAsync('-m', `"${content.replace(/"/g, '\\"')}"`).then(r => {
+        if (!r.ok) console.log('[delivery] 文字发送失败（已降级）');
+      });
       delivered = true;
     }
 

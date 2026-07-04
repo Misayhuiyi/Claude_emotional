@@ -24,20 +24,8 @@ let yesterdayWeather = null;
 /**
  * 带表情包的投递（异步，不阻塞主流程）
  */
-async function deliverWithSticker(content, type, slotName) {
-  let stickerPath = null;
-  if (features.stickers) {
-    try {
-      const sceneMap = {
-        'morning': '早安', 'noon': '开心', 'evening': '鼓励',
-        'weather_alert': '安慰', 'summary_reminder': '安慰',
-        'study_push': '鼓励', 'romantic': '想你',
-      };
-      const sf = require('./sticker-fetcher');
-      stickerPath = await sf.fetchSticker(sceneMap[type] || '开心');
-    } catch {}
-  }
-  await deliverWithSticker(content, type, slotName, { stickerPath });
+async function deliverSimple(content, type, slotName) {
+  return delivery.deliver(content, type, slotName);
 }
 
 /**
@@ -55,7 +43,7 @@ async function tick() {
   if (features.studyPush) {
     const summaryMsg = studyPusher.checkDailySummary(dailyTracker);
     if (summaryMsg) {
-      await deliverWithSticker(summaryMsg, 'summary_reminder', 'summary');
+      await deliverSimple(summaryMsg, 'summary_reminder', 'summary');
       return;
     }
 
@@ -64,7 +52,7 @@ async function tick() {
       const recentSummaries = getRecentSummaries();
       const declineMsg = studyPusher.checkDecliningTrend(recentSummaries);
       if (declineMsg) {
-        await deliverWithSticker(declineMsg, 'study_push', 'summary_decline');
+        await deliverSimple(declineMsg, 'study_push', 'summary_decline');
         return;
       }
     }
@@ -76,7 +64,7 @@ async function tick() {
     if (romanceCtx.shouldSend) {
       const msg = await generateRomantic(romanceCtx);
       if (msg) {
-        await deliverWithSticker(msg, 'romantic', 'romantic');
+        await deliverSimple(msg, 'romantic', 'romantic');
         return;
       }
     }
@@ -96,7 +84,7 @@ async function tick() {
   if (slot.type === 'night') {
     const greeting = await generateNightGreeting();
     if (greeting) {
-      await deliverWithSticker(greeting, 'night_greeting', '晚安');
+      await deliverSimple(greeting, 'night_greeting', '晚安');
       return;
     }
   }
@@ -143,7 +131,7 @@ async function tick() {
   }
 
   // 投递
-  await deliverWithSticker(content, slot.type, slot.name);
+  await deliverSimple(content, slot.type, slot.name);
 }
 
 /**
@@ -197,7 +185,7 @@ async function checkWeatherAlert() {
       if (alert) {
         const msg = await summarizer.generateAlertMessage(alert.data);
         if (msg) {
-          await deliverWithSticker(msg, 'weather_alert', 'weather_alert');
+          await deliverSimple(msg, 'weather_alert', 'weather_alert');
           weatherAlertSentToday = true;
         }
       }
@@ -324,7 +312,7 @@ async function manualTrigger(type) {
     if (study) content = study.content;
   }
 
-  if (content) await deliverWithSticker(content, type, 'manual_' + type);
+  if (content) await deliverSimple(content, type, 'manual_' + type);
 }
 
 function start() {
