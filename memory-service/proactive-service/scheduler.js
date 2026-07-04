@@ -24,8 +24,21 @@ let yesterdayWeather = null;
 /**
  * 带表情包的投递（异步，不阻塞主流程）
  */
-async function deliverSimple(content, type, slotName) {
-  return delivery.deliver(content, type, slotName);
+async async function deliverSimple(content, type, slotName) {
+  // 随机决定是否附带表情包（40% 概率）
+  let stickerPath = null;
+  if (features.stickers && Math.random() < 0.4) {
+    try {
+      const sf = require('./sticker-fetcher');
+      const sceneMap = {
+        'weather_alert':'安慰','night_greeting':'晚安','romantic':'想你',
+        'summary_reminder':'安慰','study_push':'鼓励','morning':'早安',
+        'noon':'开心','evening':'鼓励',
+      };
+      stickerPath = await sf.fetchSticker(sceneMap[type] || '开心');
+    } catch {}
+  }
+  return delivery.deliver(content, type, slotName, { stickerPath });
 }
 
 /**
