@@ -52,8 +52,10 @@ function checkDailySummary(dailyTracker) {
   if (state.summarySubmitted) {
     const content = state.summaryContent || '';
 
-    // 情况四：写了但内容太空（少于 20 字）
+    // 情况四：写了但内容太空（少于 20 字，仅一次）
     if (content.length < 20 && !state.summaryQualityChecked) {
+      state.summaryQualityChecked = true;
+      dailyTracker.saveState();
       return '阿忆，今天的总结…好短呀。是不是真的没干啥，还是发生了什么不想说？如果是不想说那没关系，如果是真的荒废了一天——明天补回来就好，我不会说你的😊';
     }
 

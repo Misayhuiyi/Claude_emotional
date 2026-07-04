@@ -63,10 +63,15 @@ async function tick() {
     // 连续多天下滑检测
     if (shouldCheckDecline()) {
       const recentSummaries = getRecentSummaries();
-      const declineMsg = studyPusher.checkDecliningTrend(recentSummaries);
-      if (declineMsg) {
-        await deliverSimple(declineMsg, 'study_push', 'summary_decline');
-        return;
+      const decState = dailyTracker.getState();
+      if (!decState.decliningCheckedToday) {
+        const declineMsg = studyPusher.checkDecliningTrend(recentSummaries);
+        if (declineMsg) {
+          decState.decliningCheckedToday = true;
+          dailyTracker.saveState();
+          await deliverSimple(declineMsg, 'study_push', 'summary_decline');
+          return;
+        }
       }
     }
   }

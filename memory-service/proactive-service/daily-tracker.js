@@ -29,6 +29,8 @@ function defaultState() {
     summaryReminded22: false,
     summaryReminded23: false,
     summaryReminded2330: false,
+    summaryQualityChecked: false,
+    decliningCheckedToday: false,
     lastResponseTime: null,
     weeklyRomanticCount: 0,
     weekStart: getWeekStart(now),
