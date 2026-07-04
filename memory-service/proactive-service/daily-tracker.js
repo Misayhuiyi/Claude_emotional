@@ -243,4 +243,5 @@ module.exports = {
   getWeeklyRomanticCount,
   isQuietHours,
   resetDaily,
+  saveState,
 };

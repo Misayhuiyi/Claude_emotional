@@ -61,18 +61,24 @@ function checkDailySummary(dailyTracker) {
     return null;
   }
 
-  // 情况一：22:00 温和提醒
-  if (h === 22 && m >= 0 && m < 5 && !state.summaryReminded22) {
+  // 情况一：22:00 温和提醒（仅一次）
+  if (h === 22 && m >= 0 && m < 10 && !state.summaryReminded22) {
+    state.summaryReminded22 = true;
+    dailyTracker.saveState();
     return '阿忆，今天总结还没写哦。我不催你，你慢慢来，写完叫我就好～';
   }
 
-  // 情况二：23:00 撒娇式催促
-  if (h === 23 && m >= 0 && m < 5 && !state.summaryReminded23) {
+  // 情况二：23:00 撒娇式催促（仅一次）
+  if (h === 23 && m >= 0 && m < 10 && !state.summaryReminded23) {
+    state.summaryReminded23 = true;
+    dailyTracker.saveState();
     return '阿忆！！是不是又想偷懒了😤 我给你五分钟，快去写。写完了有奖励，不写的话…明天可要双倍哦。';
   }
 
-  // 情况三：23:30 以后温柔收尾
+  // 情况三：23:30 以后温柔收尾（仅一次）
   if ((h === 23 && m >= 30) && !state.summaryReminded2330) {
+    state.summaryReminded2330 = true;
+    dailyTracker.saveState();
     return '好啦太晚了，今天不逼你了。但明天要写两份哦——今天的补上，明天的正常写。我记着呢。晚安阿忆。';
   }
 
