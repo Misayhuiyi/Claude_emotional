@@ -130,6 +130,8 @@ emotional-agent/
 ├── current_state.md                 # 当前用户状态
 ├── checkpoint.md                    # 手动交接包
 ├── config.toml                      # cc-connect 配置
+├── proactive-main.js                # 主动推送主入口
+├── .env.example                     # 环境变量模板
 │
 ├── memory-service/                  # 核心记忆引擎
 │   ├── index.js                     # 终端测试 REPL
@@ -145,7 +147,7 @@ emotional-agent/
 │   ├── embeddings.js                # n-gram 向量指纹
 │   ├── mcp-server.js                # MCP 协议（memory_search / memory_write）
 │   ├── session-watcher.js           # cc-connect 会话同步器
-│   └── admin-server.js              # Web 管理面板后端
+│   ├── admin-server.js              # Web 管理面板后端
 │   └── admin.html                   # Web 管理面板前端
 │
 ├── data/
