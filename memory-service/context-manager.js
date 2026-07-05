@@ -133,7 +133,21 @@ function buildContext(userMessage, recentMessages = [], memories = [], options =
     hot.lastSession ? `## 上次交接\n${hot.lastSession}` : '',
   ].filter(Boolean).join('\n\n---\n\n');
 
-  // 3. 长期记忆（top N）
+  // 3. 今日对话摘要（summaries 表）
+  let summaryBlock = '';
+  try {
+    const db = require('./db');
+    const database = db.getDb();
+    const lastSummary = database.prepare(
+      "SELECT content, created_at FROM summaries WHERE type='daily' ORDER BY created_at DESC LIMIT 1"
+    ).get();
+    if (lastSummary) {
+      const date = (lastSummary.created_at || '').slice(0, 10);
+      summaryBlock = `## 近日对话摘要（${date}）\n${lastSummary.content.slice(0, 300)}`;
+    }
+  } catch {}
+
+  // 4. 长期记忆（top N）
   const memoryBlock = memories.length > 0
     ? `## 相关长期记忆\n${memories.slice(0, MAX_MEMORIES).map((m, i) =>
         `[${i + 1}] (${m.type || 'general'}, 权重${m.weight || 0}) ${m.content}`
@@ -151,7 +165,7 @@ function buildContext(userMessage, recentMessages = [], memories = [], options =
   const currentBlock = `\n\n用户：${userMessage}\n沈幼楚：`;
 
   // 拼接
-  const parts = [systemPrompt, hotMemoryBlock, memoryBlock, recentBlock, currentBlock]
+  const parts = [systemPrompt, hotMemoryBlock, summaryBlock, memoryBlock, recentBlock, currentBlock]
     .filter(Boolean);
 
   const context = parts.join('\n\n');
