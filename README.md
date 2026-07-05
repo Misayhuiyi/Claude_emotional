@@ -47,8 +47,8 @@
            │    │  自动摘要 / 遗忘维护  │
            │    │  Web 管理面板        │
            │    └─────────────────────┘
-           │
            └── proactive-main（主动推送）
+```
 
 ### 职责分工
 
@@ -148,11 +148,9 @@ emotional-agent/
 │   ├── session-watcher.js           # cc-connect 会话同步器
 │   ├── admin-server.js              # Web 管理面板后端
 │   └── admin.html                   # Web 管理面板前端
-│
 ├── data/
 │   ├── memory.db                    # SQLite 记忆主库
 │   └── backups/                     # 自动备份
-│
 ├── .claude/
 │   ├── settings.local.json          # 项目模型配置
 │   └── commands/                    # 自定义命令
@@ -160,11 +158,9 @@ emotional-agent/
 │       ├── checkpoint.md / summarize.md
 │       ├── memory-audit.md
 │       └── import-legacy-keke.md
-│
 ├── memory/
 │   ├── reflections/                 # 个人总结（#总结 提交，v3.1新增）
 │   └── summaries/daily/             # 对话摘要（系统自动生成）
-│
 ├── proactive-service/               # 主动推送引擎（v3.1新增）
 │   ├── scheduler.js                 # 调度主循环（10秒轮询）
 │   ├── triggers.js                  # 时段+动态触发
@@ -183,7 +179,6 @@ emotional-agent/
 │       ├── news.js                  # 新闻热点
 │       ├── trends.js                # 网络热梗
 │       └── ai-daily.js              # AI行业资讯
-│
 ├── scripts/
 │   ├── init-db.js                   # 数据库初始化
 │   ├── migrate-multimodal.js        # 升级迁移（新增）
@@ -191,10 +186,8 @@ emotional-agent/
 │   ├── asr.py                       # 本地语音转文字（新增）
 │   ├── start-proactive.cmd          # 主动推送启动脚本（新增）
 │   └── install-proactive.ps1        # 开机自启注册（新增）
-│
 ├── stickers/
 │   └── index.json                   # 表情包索引
-│
 └── 完整安装说明 → INSTALL.md
 ```
 
