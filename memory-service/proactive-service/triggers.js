@@ -8,6 +8,40 @@
 
 const config = require('../config');
 
+// 时段随机目标时间缓存（避免每次tick重新计算）
+let randomTargets = {};
+
+/**
+ * 为某个时段生成随机推送时间（窗口内随机分钟）
+ * 例如早安 08:30-09:30 → 可能返回 8:47 或 9:12
+ */
+function getRandomFireTime(slot) {
+  if (randomTargets[slot.name]) return randomTargets[slot.name];
+
+  const [startStr, endStr] = slot.window;
+  const [sh, sm] = startStr.split(':').map(Number);
+  const [eh, em] = endStr.split(':').map(Number);
+  const startMin = sh * 60 + sm;
+  const endMin = eh * 60 + em;
+
+  // 窗口中间往前 1/3 到后 2/3 范围内随机，避免总在边界
+  const range = endMin - startMin;
+  const earlyBound = startMin + Math.floor(range * 0.15);
+  const lateBound = startMin + Math.floor(range * 0.75);
+  const randomMin = Math.floor(Math.random() * (lateBound - earlyBound + 1)) + earlyBound;
+
+  randomTargets[slot.name] = randomMin;
+  console.log(`[triggers] ${slot.name} 随机推送时间: ${Math.floor(randomMin/60)}:${String(randomMin%60).padStart(2,'0')} (窗口 ${startStr}-${endStr})`);
+  return randomMin;
+}
+
+/**
+ * 重置随机目标（新的一天）
+ */
+function resetRandomTargets() {
+  randomTargets = {};
+}
+
 // ─── 定时时段定义 ──────────────────────────────────
 
 const SLOTS = [
@@ -115,7 +149,7 @@ function checkWeatherAlert(todayWeather, yesterdayWeather) {
 }
 
 /**
- * 检查是否应该在当前时机推送
+ * 检查是否应该在当前时机推送（含随机化）
  * @param {Object} options
  * @param {Date} options.now
  * @param {Object} options.dailyTracker - daily-tracker 实例
@@ -133,6 +167,8 @@ function shouldPushNow({ now = new Date(), dailyTracker, features }) {
   if (!canPush.ok) {
     return { shouldPush: false, reason: canPush.reason };
   }
+
+  const currentMin = now.getHours() * 60 + now.getMinutes();
 
   // 检查各时段
   const slots = getCurrentSlots(now);
@@ -155,6 +191,16 @@ function shouldPushNow({ now = new Date(), dailyTracker, features }) {
       return features[featureMap[ct]];
     });
     if (!hasContent) continue;
+
+    // 随机化：只在这个时段的随机目标时间之后才推送
+    const targetMin = getRandomFireTime(slot);
+    if (currentMin < targetMin) {
+      const wait = targetMin - currentMin;
+      if (wait % 5 === 0 || wait < 3) { // 每5分钟或最后3分钟才日志
+        console.log(`[triggers] ${slot.name} 等待随机推送时间（还剩 ${wait} 分钟）`);
+      }
+      continue;
+    }
 
     return { shouldPush: true, slot, reason: `时段：${slot.name}` };
   }

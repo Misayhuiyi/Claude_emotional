@@ -88,9 +88,15 @@ async function tick() {
     }
   }
 
-  // ─── 4. 晚安问候（21:00-23:00）─────────────────
+  // ─── 4. 晚安问候（21:00-22:30，随机时间）───────
   const nowNight = new Date();
-  if (nowNight.getHours() >= 21 && nowNight.getHours() < 23 && !dailyTracker.hasSlotFired('晚安')) {
+  const nightMin = nowNight.getHours() * 60 + nowNight.getMinutes();
+  // 21:15 到 22:15 之间随机
+  if (!global._nightTarget) {
+    global._nightTarget = 21 * 60 + 15 + Math.floor(Math.random() * 60);
+    console.log(`[scheduler] 晚安随机时间: ${Math.floor(global._nightTarget/60)}:${String(global._nightTarget%60).padStart(2,'0')}`);
+  }
+  if (nightMin >= global._nightTarget && !dailyTracker.hasSlotFired('晚安')) {
     const greeting = await generateNightGreeting();
     if (greeting) {
       await deliverSimple(greeting, 'night_greeting', '晚安');
@@ -358,6 +364,9 @@ function start() {
   // 新的一天重置
   weatherAlertSentToday = false;
   dailyTracker.resetDaily();
+  const triggers = require('./triggers');
+  triggers.resetRandomTargets();
+  global._nightTarget = null;
 
   console.log('[scheduler] 调度器已启动 (轮询间隔: ' + config.PROACTIVE.pollIntervalMs + 'ms)');
   console.log('[scheduler] 当前开关:', Object.entries(features).filter(([, v]) => v).map(([k]) => k).join(', ') || '全部关闭');
