@@ -73,21 +73,21 @@ function scanSessionFile(filePath) {
           conversationId: PROJECT_NAME + '_' + sessionId,
         });
 
-        // 每日总结检测
+        // 每日总结检测（用户个人学习生活总结，区别于系统对话摘要）
         if (msg.role === 'user' && (msg.content.startsWith('#总结') || msg.content.startsWith('#今日总结') || msg.content.startsWith('今日总结'))) {
           try {
-            const summaryContent = msg.content.replace(/^#?(今日)?总结\s*/, '').trim();
+            const reflectionContent = msg.content.replace(/^#?(今日)?总结\s*/, '').trim();
             // 标记到 daily-tracker
             const dailyTracker = require('./proactive-service/daily-tracker');
-            dailyTracker.markSummarySubmitted(summaryContent);
-            // 保存为文档方便回顾
-            const summaryDir = path.join(__dirname, '..', 'memory', 'summaries', 'daily');
+            dailyTracker.markSummarySubmitted(reflectionContent);
+            // 保存到 reflections/ 目录（纯个人总结，和系统对话摘要分开）
+            const reflectionDir = path.join(__dirname, '..', 'memory', 'reflections');
             const today = new Date().toISOString().slice(0, 10);
-            const filePath = path.join(summaryDir, `${today}.md`);
-            const header = `# ${today} 每日总结\n\n`;
-            fs.mkdirSync(summaryDir, { recursive: true });
-            fs.writeFileSync(filePath, header + summaryContent, 'utf-8');
-            console.log(`[session-watcher] 📝 每日总结已保存: ${today}.md`);
+            const filePath = path.join(reflectionDir, `${today}.md`);
+            const header = `# ${today} 个人总结\n\n`;
+            fs.mkdirSync(reflectionDir, { recursive: true });
+            fs.writeFileSync(filePath, header + reflectionContent, 'utf-8');
+            console.log(`[session-watcher] 📝 个人总结已保存: ${today}.md`);
           } catch {}
         }
         // 学习反馈检测
