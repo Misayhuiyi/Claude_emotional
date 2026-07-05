@@ -259,6 +259,49 @@ function getExamReminder(examDateStr, examName = '考试') {
   return null;
 }
 
+/**
+ * 从 GitHub 搜索 AI 面试题/热门项目
+ * @param {string} type - 搜索类型
+ */
+async function fetchFromGitHub(type) {
+  const queries = {
+    agent_interview: 'AI agent interview questions answers',
+    llm_knowledge: 'large language model interview questions',
+    algorithm: 'algorithm interview leetcode',
+    ai_paper: 'awesome AI papers 2024',
+    tool_tips: 'langchain crewai autogen examples',
+    system_design: 'LLM system design interview',
+  };
+
+  const query = queries[type];
+  if (!query) return null;
+
+  try {
+    const url = 'https://api.github.com/search/repositories?q=' +
+      encodeURIComponent(query) +
+      '&sort=stars&order=desc&per_page=5';
+
+    const res = await fetch(url, {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'shen-yuchu-companion/1.0',
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.items || []).slice(0, 3).map(repo => ({
+      title: repo.full_name,
+      description: repo.description || '',
+      url: repo.html_url,
+      stars: repo.stargazers_count,
+      type,
+    }));
+  } catch (e) {
+    console.log(`[study] GitHub 搜索失败: ${e.message}`);
+    return null;
+  }
+}
+
 module.exports = {
   checkDailySummary,
   checkDecliningTrend,
@@ -267,5 +310,6 @@ module.exports = {
   generateStudyPush,
   handleFeedback,
   getExamReminder,
+  fetchFromGitHub,
   STUDY_TYPES,
 };
