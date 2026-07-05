@@ -132,7 +132,6 @@ emotional-agent/
 ├── config.toml                      # cc-connect 配置
 ├── proactive-main.js                # 主动推送主入口
 ├── .env.example                     # 环境变量模板
-│
 ├── memory-service/                  # 核心记忆引擎
 │   ├── index.js                     # 终端测试 REPL
 │   ├── config.js                    # 配置（路径、模型、阈值）
