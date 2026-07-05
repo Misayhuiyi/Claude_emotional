@@ -73,7 +73,7 @@ module.exports = {
 
   // 主动资讯推送
   PROACTIVE: {
-    enabled: false,                  // 总开关（默认关闭）
+    enabled: true,                   // 总开关（已开启）
     quietHours: ['23:30', '08:30'], // 勿扰时段 HH:MM
     maxDaily: 3,                     // 每日推送上限
     minGapMinutes: 180,              // 两次推送间最小间隔（分钟）

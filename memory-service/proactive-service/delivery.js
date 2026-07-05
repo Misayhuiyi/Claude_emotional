@@ -131,7 +131,11 @@ async function deliver(content, type, slotName, options = {}) {
   } catch {}
 
   // ─── 4. 更新 daily-tracker ───────────────
-  dailyTracker.recordPush(type || 'general', 'text_only', content || '');
+  // 晚安/总结提醒/天气告警/浪漫 不占用每日资讯上限，不计 pushCount
+  const isServiceMsg = ['night_greeting', 'summary_reminder', 'weather_alert', 'summary_decline', 'romantic'].includes(type);
+  if (!isServiceMsg) {
+    dailyTracker.recordPush(type || 'general', 'text_only', content || '');
+  }
   if (slotName) dailyTracker.markSlotFired(slotName);
 
   console.log(`[delivery] ✅ ${slotName || type} 推送完成`);
