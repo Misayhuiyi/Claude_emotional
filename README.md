@@ -1,18 +1,21 @@
 # 沈幼楚——单人情感陪伴 Agent
 
 版本：v3.1  
-日期：2026-07-04  
+日期：2026-07-05  
 人格核心：沈幼楚（外柔内韧、干净温柔、克制稳定）
 
 ## v3.1 更新
 
 - 📷 **图片理解**：Qwen3-VL-Plus 视觉分析，看懂图片内容
 - 🎤 **语音转文字**：本地 Whisper，免费离线
-- 🖼️ **表情包**：联网搜索热门表情包，聊天自动发
-- 📡 **主动推送**：四时段定时推送（早安/午间/傍晚/晚安），天气 + AI 资讯 + 学习内容
-- 📝 **每日总结**：`#总结` 存为文档，22:00 智能提醒
-- 💌 **浪漫内容**：情境化即兴生成，不重复不套模板
+- 🖼️ **表情包**：联网搜索热门表情包，聊天自动发，支持收藏
+- 📡 **主动推送**：四时段推送（早安/午间/傍晚/晚安），天气 + AI 资讯 + 学习
+- 📝 **个人总结**：`#总结` 存到 `memory/reflections/`，22:00 智能提醒，防重复
+- 📅 **对话摘要**：每天 12:00 自动生成聊天摘要，**阿楚读取上下文时可见**
+- 💌 **浪漫内容**：情境化即兴生成，6 种风格池随机，杜绝模板感
 - 🧹 **精简上下文**：去掉空占位 token，每轮省 ~90 token
+- 🔄 **跨进程状态同步**：session-watcher 标记总结后，推送进程 30 秒内感知
+- 🛡️ **防重复推送**：所有推送路径独立 dedup 锁 + 持久化
 
 ---
 
@@ -131,7 +134,9 @@ emotional-agent/
 ├── memory-service/                  # 核心记忆引擎
 │   ├── index.js                     # 终端测试 REPL
 │   ├── config.js                    # 配置（路径、模型、阈值）
-│   ├── context-manager.js           # 上下文拼接 + 热记忆
+│   ├── features.js                  # Feature flag 开关（v3.1新增）
+│   ├── env-loader.js                # .env 环境变量加载（v3.1新增）
+│   ├── context-manager.js           # 上下文拼接 + 热记忆 + 对话摘要
 │   ├── claude-runner.js             # claude CLI 调用封装
 │   ├── db.js                        # SQLite 读写
 │   ├── search.js                    # 混合检索（LIKE + 查询扩展）
@@ -154,6 +159,10 @@ emotional-agent/
 │       ├── checkpoint.md / summarize.md
 │       ├── memory-audit.md
 │       └── import-legacy-keke.md
+│
+├── memory/
+│   ├── reflections/                 # 个人总结（#总结 提交，v3.1新增）
+│   └── summaries/daily/             # 对话摘要（系统自动生成）
 │
 ├── proactive-service/               # 主动推送引擎（v3.1新增）
 │   ├── scheduler.js                 # 调度主循环（10秒轮询）
