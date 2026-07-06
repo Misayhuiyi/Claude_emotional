@@ -135,6 +135,12 @@ async function deliver(content, type, slotName, options = {}) {
   const isServiceMsg = ['night_greeting', 'summary_reminder', 'weather_alert', 'summary_decline', 'romantic'].includes(type);
   if (!isServiceMsg) {
     dailyTracker.recordPush(type || 'general', 'text_only', content || '');
+  } else {
+    // 服务消息不计数，但要记录 type 和时间（用于 dedup 检查）
+    const state = dailyTracker.getState();
+    state.lastPushType = type;
+    state.lastPushAt = new Date().toISOString();
+    dailyTracker.saveState();
   }
   if (slotName) dailyTracker.markSlotFired(slotName);
 

@@ -295,9 +295,9 @@ function checkRomanticContext() {
     if (hoursSince < 24) return { shouldSend: false };
   }
 
-  // 触发情境：早安/晚安/傍晚空档
+  // 触发情境
   const triggers = [];
-  if (hour >= 6 && hour <= 8) triggers.push('早晨刚醒，第一个想到阿忆');
+  if (hour >= 7 && hour <= 8) triggers.push('早晨刚醒，第一个想到阿忆');
   if (hour >= 17 && hour <= 18) triggers.push('傍晚时分，有点想阿忆');
   if (hour >= 21 && hour <= 22) triggers.push('晚上安静下来，想跟阿忆说说话');
 
