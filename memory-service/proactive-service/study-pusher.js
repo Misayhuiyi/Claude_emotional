@@ -48,6 +48,25 @@ function checkDailySummary(dailyTracker) {
   const m = now.getMinutes();
   const state = dailyTracker.getState();
 
+  // 主动查数据库：检查用户今天是否发了 #总结（跨进程容错）
+  if (!state.summarySubmitted) {
+    try {
+      const db = require('../db');
+      const database = db.getDb();
+      const today = new Date().toISOString().slice(0, 10);
+      const summaryMsg = database.prepare(
+        "SELECT content FROM messages WHERE role='user' AND (content LIKE '#总结%' OR content LIKE '#今日总结%') AND created_at >= ? ORDER BY created_at DESC LIMIT 1"
+      ).get(today);
+      if (summaryMsg) {
+        const content = summaryMsg.content.replace(/^#?(今日)?总结\s*/, '').trim();
+        dailyTracker.markSummarySubmitted(content);
+        state.summarySubmitted = true; // 立即生效，不等到文件重载
+        state.summaryContent = content;
+        console.log('[study] 数据库检测到今日总结，已标记提交');
+      }
+    } catch {}
+  }
+
   // 已经提交了总结
   if (state.summarySubmitted) {
     const content = state.summaryContent || '';
