@@ -120,6 +120,17 @@ async function deliver(content, type, slotName, options = {}) {
     conversationId: 'proactive_' + (slotName || type),
   });
 
+  // 同步写一份到主记忆流，让我能看到
+  const feedId = db.generateId('msg_');
+  db.insertMessage({
+    id: feedId,
+    role: 'assistant',
+    content: options.ttsText || content || '',
+    source: 'proactive_feed',
+    platform: 'cc-connect',
+    conversationId: 'proactive_feed',
+  });
+
   // ─── 3. 写入 info_sources 表 ─────────────
   try {
     const database = db.getDb();
