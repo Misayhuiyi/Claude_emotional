@@ -83,6 +83,7 @@ module.exports = {
     noRepeatForms: 3,                // 连续 N 次推送不重复同一种形式
     noRepeatOpenings: 7,             // N 天内不出现相同句式开头
     pollIntervalMs: 10000,           // 调度器轮询间隔（毫秒）
+    cooldownMinutes: 30,           // 推送冷却时间（分钟），防连续推送
   },
 
   // 默认城市（用于天气推送，可通过 .env 文件或环境变量 CITY 覆盖）

@@ -20,11 +20,13 @@ const { features } = require('../features');
 const config = require('../config');
 
 let yesterdayWeather = null;
+let lastDeliveryTime = 0;       // 上次推送时间戳，防连续推送
 
 /**
  * 带表情包的投递（异步，不阻塞主流程）
  */
 async function deliverSimple(content, type, slotName) {
+  lastDeliveryTime = Date.now();
   // 随机决定是否附带表情包（40% 概率）
   let stickerPath = null;
   if (features.stickers && Math.random() < 0.4) {
@@ -46,6 +48,10 @@ async function deliverSimple(content, type, slotName) {
  */
 async function tick() {
   if (!features.proactive) return;
+
+  // ─── 防连续推送：距上次推送至少 30 分钟 ──
+  const cooldownMs = (config.PROACTIVE.cooldownMinutes || 30) * 60 * 1000;
+  if (lastDeliveryTime > 0 && (Date.now() - lastDeliveryTime) < cooldownMs) return;
 
   // ─── 1. 动态触发：天气突变 ─────────────────
   if (features.infoWeather) {
