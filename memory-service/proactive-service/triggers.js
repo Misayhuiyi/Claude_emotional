@@ -215,4 +215,5 @@ module.exports = {
   getToneForSlot,
   checkWeatherAlert,
   shouldPushNow,
+  resetRandomTargets,
 };
