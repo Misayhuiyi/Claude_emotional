@@ -58,7 +58,26 @@ async function tick() {
     await checkWeatherAlert();
   }
 
-  // ─── 2. 每日总结提醒 ────────────────────────
+  // ─── 2. 晚安问候（21:00-23:00，优先于其他推送）──
+  const nowNight = new Date();
+  const nightMin = nowNight.getHours() * 60 + nowNight.getMinutes();
+  // 21:15 到 22:30 之间随机
+  if (!global._nightTarget) {
+    global._nightTarget = 21 * 60 + 15 + Math.floor(Math.random() * 75);
+    console.log(`[scheduler] 晚安随机时间: ${Math.floor(global._nightTarget/60)}:${String(global._nightTarget%60).padStart(2,'0')}`);
+  }
+  if (nightMin >= global._nightTarget && !dailyTracker.hasSlotFired('晚安')) {
+    const greeting = await generateNightGreeting();
+    if (greeting) {
+      await deliverSimple(greeting, 'night_greeting', '晚安');
+      dailyTracker.markSlotFired('晚安');
+      dailyTracker.saveState();
+      console.log('[scheduler] 晚安已发送，标记已触发');
+      return;
+    }
+  }
+
+  // ─── 3. 每日总结提醒 ────────────────────────
   if (features.studyPush) {
     const summaryMsg = studyPusher.checkDailySummary(dailyTracker);
     if (summaryMsg) {
@@ -82,7 +101,7 @@ async function tick() {
     }
   }
 
-  // ─── 3. 浪漫内容（低频、情境化） ────────────
+  // ─── 4. 浪漫内容（低频、情境化） ────────────
   if (features.romanticContent) {
     const romanceCtx = checkRomanticContext();
     if (romanceCtx.shouldSend) {
@@ -91,22 +110,6 @@ async function tick() {
         await deliverSimple(msg, 'romantic', 'romantic');
         return;
       }
-    }
-  }
-
-  // ─── 4. 晚安问候（21:00-22:30，随机时间）───────
-  const nowNight = new Date();
-  const nightMin = nowNight.getHours() * 60 + nowNight.getMinutes();
-  // 21:15 到 22:15 之间随机
-  if (!global._nightTarget) {
-    global._nightTarget = 21 * 60 + 15 + Math.floor(Math.random() * 60);
-    console.log(`[scheduler] 晚安随机时间: ${Math.floor(global._nightTarget/60)}:${String(global._nightTarget%60).padStart(2,'0')}`);
-  }
-  if (nightMin >= global._nightTarget && !dailyTracker.hasSlotFired('晚安')) {
-    const greeting = await generateNightGreeting();
-    if (greeting) {
-      await deliverSimple(greeting, 'night_greeting', '晚安');
-      return;
     }
   }
 
