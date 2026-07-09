@@ -20,7 +20,8 @@ const { features } = require('../features');
 const config = require('../config');
 
 let yesterdayWeather = null;
-let lastDeliveryTime = 0;       // 上次推送时间戳，防连续推送
+let lastDeliveryTime = 0;
+let lastDate = new Date().toDateString(); // 记录上次运行的日期       // 上次推送时间戳，防连续推送
 
 /**
  * 带表情包的投递（异步，不阻塞主流程）
@@ -48,6 +49,16 @@ async function deliverSimple(content, type, slotName) {
  */
 async function tick() {
   if (!features.proactive) return;
+
+  // ─── 检测日期变更，跨天自动重置 ──
+  const todayStr = new Date().toDateString();
+  if (todayStr !== lastDate) {
+    console.log('[scheduler] 新的一天: ' + todayStr + '，重置每日状态');
+    lastDate = todayStr;
+    weatherAlertSentToday = false;
+    lastDeliveryTime = 0;
+    dailyTracker.resetDaily();
+  }
 
   // ─── 防连续推送：距上次推送至少 30 分钟 ──
   const cooldownMs = (config.PROACTIVE.cooldownMinutes || 30) * 60 * 1000;
