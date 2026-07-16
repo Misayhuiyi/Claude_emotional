@@ -98,6 +98,18 @@ ${recentCtx}
 
 输出：只输出消息文本。`;
 
+  // 去重检查：如果生成的内容跟最近推送的相似，跳过
+  if (content) {
+    const isDuplicate = recentPushCache.some(cached => 
+      content.slice(0, 30) === cached.slice(0, 30)
+    );
+    if (isDuplicate) {
+      console.log('[summarizer] 内容与近期推送重复，跳过' + content.slice(0, 40));
+      return null;
+    }
+    recentPushCache.push(content);
+    if (recentPushCache.length > 5) recentPushCache.shift();
+  }
   return await callSummarizer(prompt);
 }
 
